@@ -1,18 +1,31 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <Description>Jaguar is a free powerful package for creating  online multiplayer games using UDP protocol which supports reliable messages and big messages
-powerful matchmaking
-room system
-and more</Description>
-    <Copyright>MIT</Copyright>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net6.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<Description>
+			Jaguar is a free powerful package for creating  online multiplayer games using UDP protocol which supports reliable messages and big messages
+			powerful matchmaking
+			room system
+			and more
+		</Description>
+		<Copyright>MIT</Copyright>
+		<PackageProjectUrl>https://github.com/mul83rry/Jaguar</PackageProjectUrl>
+		<PackageReleaseNotes>
+			Update Byte received method and start server
+			fix bugs
+			Refactoring Code
+		</PackageReleaseNotes>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.1" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+	</ItemGroup>
+
+	<PropertyGroup>
+		<VersionPrefix Condition=" '$(VersionPrefix)' == '' ">1.1.0</VersionPrefix>
+	</PropertyGroup>
 
 </Project>

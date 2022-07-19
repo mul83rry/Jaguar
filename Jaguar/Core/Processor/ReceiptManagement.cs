@@ -6,137 +6,136 @@ using Jaguar.Core.Data;
 using Jaguar.Core.Socket;
 using Newtonsoft.Json;
 
-namespace Jaguar.Core.Processor
+namespace Jaguar.Core.Processor;
+
+internal class ReceiptManagement
 {
-    internal class ReceiptManagement
+    internal ReceiptManagement()
     {
-        internal ReceiptManagement()
+        _receivedPacketsSituation = ImmutableDictionary.CreateBuilder<uint, bool>();
+    }
+
+    private readonly ImmutableDictionary<uint, bool>.Builder _receivedPacketsSituation;
+    private readonly SortedList<uint, Packet> _receivedReliablePackets = new();
+    private readonly ConcurrentQueue<(uint, Packet)> _receivedReliablePacketsInQueue = new();
+    private readonly SortedList<uint, PacketInQueue> _reliableMessagesSequenced = new();
+
+    private uint _lastReliableMessageIndexReceived;
+    private bool _destroyed;
+
+    public long PacketsInQueue => _receivedReliablePackets.Count - _lastReliableMessageIndexReceived;
+
+
+    internal void Init() => _ = CheckSequenceDataAsync();
+
+    internal void ReceivedReliablePacket(Packet packet)
+    {
+        if (_receivedPacketsSituation.ContainsKey(packet.Index))
         {
-            _receivedPacketsSituation = ImmutableDictionary.CreateBuilder<uint, bool>();
+            if (!_receivedPacketsSituation[packet.Index])
+            {
+                SendReceivedCallBack(packet.Index, packet.Sender); // Send a callback that I have already received the message
+            }
+            return;
         }
 
-        private readonly ImmutableDictionary<uint, bool>.Builder _receivedPacketsSituation;
-        private readonly SortedList<uint, Packet> _receivedReliablePackets = new();
-        private readonly ConcurrentQueue<(uint, Packet)> _receivedReliablePacketsInQueue = new();
-        private readonly SortedList<uint, PacketInQueue> _reliableMessagesSequenced = new();
-
-        private uint _lastReliableMessageIndexReceived;
-        private bool _destroyed;
-
-        public long PacketsInQueue => _receivedReliablePackets.Count - _lastReliableMessageIndexReceived;
+        _receivedPacketsSituation.TryAdd(packet.Index, false);
 
 
-        internal void Init() => _ = CheckSequenceDataAsync();
+        SendReceivedCallBack(packet.Index, packet.Sender);
 
-        internal void ReceivedReliablePacket(Packet packet)
+
+        #region test
+        var found = _receivedReliablePackets.Any(p => p.Value.Message is { Length: > 5 } && p.Value.Message == packet.Message && MathF.Abs(packet.Index - p.Value.Index) < 2);
+        if (found)
         {
-            if (_receivedPacketsSituation.ContainsKey(packet.Index))
+            var otherPacket = _receivedReliablePackets.FirstOrDefault(p => p.Value.Message != null && p.Value.Message.Length > 5 && p.Value.Message == packet.Message && MathF.Abs(packet.Index - p.Value.Index) < 2);
+            var log = $"Packet_0:\n{JsonConvert.SerializeObject(packet)}\n\nPacket_1:\n{JsonConvert.SerializeObject(otherPacket)}";
+            SaveLog(log);
+        }
+        #endregion
+
+        //receivedReliablePackets.Add(packet.Index, packet); // Todo: add to a temp list, then in CheckSequenceDataAsync move temp data to receivedReliablePackets
+        _receivedReliablePacketsInQueue.Enqueue((packet.Index, packet));
+    }
+
+    private async void SaveLog(string s)
+    {
+        // Todo: check await File.WriteAllTextAsync(@"C:\WriteLines.txt", s);
+    }
+
+    private async Task CheckSequenceDataAsync()
+    {
+        while (!_destroyed)
+        {
+            await Task.Delay(5);
+
+            while (_receivedReliablePacketsInQueue.Count > 0)
             {
-                if (!_receivedPacketsSituation[packet.Index])
+                if (_receivedReliablePacketsInQueue.TryDequeue(out var result))
                 {
-                    SendReceivedCallBack(packet.Index, packet.Sender); // Send a callback that I have already received the message
+                    _receivedReliablePackets.Add(result.Item1, result.Item2);
                 }
-                return;
             }
 
-            _receivedPacketsSituation.TryAdd(packet.Index, false);
-
-
-            SendReceivedCallBack(packet.Index, packet.Sender);
-
-
-            #region test
-            var found = _receivedReliablePackets.Any(p => p.Value.Message is { Length: > 5 } && p.Value.Message == packet.Message && MathF.Abs(packet.Index - p.Value.Index) < 2);
-            if (found)
+            for (var i = _lastReliableMessageIndexReceived; i < _receivedReliablePackets.Count; i++)
             {
-                var otherPacket = _receivedReliablePackets.FirstOrDefault(p => p.Value.Message != null && p.Value.Message.Length > 5 && p.Value.Message == packet.Message && MathF.Abs(packet.Index - p.Value.Index) < 2);
-                var log = $"Packet_0:\n{JsonConvert.SerializeObject(packet)}\n\nPacket_1:\n{JsonConvert.SerializeObject(otherPacket)}";
-                SaveLog(log);
-            }
-            #endregion
 
-            //receivedReliablePackets.Add(packet.Index, packet); // Todo: add to a temp list, then in CheckSequenceDataAsync move temp data to receivedReliablePackets
-            _receivedReliablePacketsInQueue.Enqueue((packet.Index, packet));
-        }
+                var starterPacket = _receivedReliablePackets[_receivedReliablePackets.Keys[(int)i]];
 
-        private async void SaveLog(string s)
-        {
-            // Todo: check await File.WriteAllTextAsync(@"C:\WriteLines.txt", s);
-        }
 
-        private async Task CheckSequenceDataAsync()
-        {
-            while (!_destroyed)
-            {
-                await Task.Delay(5);
-
-                while (_receivedReliablePacketsInQueue.Count > 0)
+                if (starterPacket.Index != _lastReliableMessageIndexReceived)
                 {
-                    if (_receivedReliablePacketsInQueue.TryDequeue(out var result))
-                    {
-                        _receivedReliablePackets.Add(result.Item1, result.Item2);
-                    }
+                    continue;
                 }
 
-                for (var i = _lastReliableMessageIndexReceived; i < _receivedReliablePackets.Count; i++)
+                if (!starterPacket.StarterPack)
                 {
+                    continue;
+                }
 
-                    var starterPacket = _receivedReliablePackets[_receivedReliablePackets.Keys[(int)i]];
-
-
-                    if (starterPacket.Index != _lastReliableMessageIndexReceived)
+                var message = new StringBuilder(starterPacket.Message);
+                var eventName = starterPacket.EventName;
+                var breakTheFor = false;
+                for (var packetIndex = i + 1; packetIndex < i + starterPacket.Length; packetIndex++)
+                {
+                    if (!_receivedReliablePackets.ContainsKey(packetIndex))
                     {
-                        continue;
-                    }
-
-                    if (!starterPacket.StarterPack)
-                    {
-                        continue;
-                    }
-
-                    var message = new StringBuilder(starterPacket.Message);
-                    var eventName = starterPacket.EventName;
-                    var breakTheFor = false;
-                    for (var packetIndex = i + 1; packetIndex < i + starterPacket.Length; packetIndex++)
-                    {
-                        if (!_receivedReliablePackets.ContainsKey(packetIndex))
-                        {
-                            breakTheFor = true;
-                            break;
-                        }
-
-                        var nextPacket = _receivedReliablePackets[packetIndex];
-                        message.Append(nextPacket.Message);
-                    }
-                    if (breakTheFor)
-                    {
+                        breakTheFor = true;
                         break;
                     }
 
-                    _reliableMessagesSequenced.Add(starterPacket.Index, new PacketInQueue(starterPacket.Index, starterPacket.Length, eventName, message.ToString(), starterPacket.Sender, starterPacket.SignIndex));
-
-                    CheckReliableMessagesSequenced();
-                    i += starterPacket.Length - 1;
+                    var nextPacket = _receivedReliablePackets[packetIndex];
+                    message.Append(nextPacket.Message);
                 }
+                if (breakTheFor)
+                {
+                    break;
+                }
+
+                _reliableMessagesSequenced.Add(starterPacket.Index, new PacketInQueue(starterPacket.Index, starterPacket.Length, eventName, message.ToString(), starterPacket.Sender, starterPacket.SignIndex));
+
+                CheckReliableMessagesSequenced();
+                i += starterPacket.Length - 1;
             }
         }
+    }
 
-        private void CheckReliableMessagesSequenced()
-        {
-            if (_lastReliableMessageIndexReceived != _reliableMessagesSequenced.Keys[0]) return;
-            _lastReliableMessageIndexReceived += _reliableMessagesSequenced[_reliableMessagesSequenced.Keys[0]].PacketLength;
-            var data = _reliableMessagesSequenced[_reliableMessagesSequenced.Keys[0]];
-            _reliableMessagesSequenced.RemoveAt(0);
-            Listener.OnNewMessageReceived?.Invoke(data.Sender, new Packet(data.PacketIndex, data.EventName, data.Message, false, data.SignIndex));
+    private void CheckReliableMessagesSequenced()
+    {
+        if (_lastReliableMessageIndexReceived != _reliableMessagesSequenced.Keys[0]) return;
+        _lastReliableMessageIndexReceived += _reliableMessagesSequenced[_reliableMessagesSequenced.Keys[0]].PacketLength;
+        var data = _reliableMessagesSequenced[_reliableMessagesSequenced.Keys[0]];
+        _reliableMessagesSequenced.RemoveAt(0);
+        Listener.OnMessageReceived?.Invoke(data.Sender, new Packet(data.PacketIndex, data.EventName, data.Message, false, data.SignIndex));
 
-        }
+    }
 
-        private static void SendReceivedCallBack(uint packetIndex, IPEndPoint? sender) =>
-            UdpSocket.Send(sender, new Packet(0, "PRC", packetIndex.ToString(), false, 0));
+    private static void SendReceivedCallBack(uint packetIndex, IPEndPoint? sender) =>
+        UdpSocket.Send(sender, new Packet(0, "PRC", packetIndex.ToString(), false, 0));
 
-        internal void Destroy()
-        {
-            _destroyed = true;
-        }
+    internal void Destroy()
+    {
+        _destroyed = true;
     }
 }
