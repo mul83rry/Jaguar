@@ -355,6 +355,9 @@ namespace Jaguar.Core
                 else
                 {
                     var clonedUser = user.ShallowCopy();
+                    var oldUser = Users.SingleOrDefault(u => u.UniqueId == user.UniqueId);
+                    if (oldUser == null) return;
+
                     Users = Users.Replace(user, clonedUser);
                     clonedUser.InRoom = false;
                 }
