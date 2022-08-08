@@ -2,25 +2,26 @@
 using Jaguar.Core;
 using Jaguar.Core.Processor;
 
-namespace Jaguar;
-
-public class ClientDic
+namespace Jaguar
 {
-    public readonly IPEndPoint Client;
-    public User? User;
-    internal PostManagement Post;
-    internal ReceiptManagement Receipt;
-    public DateTime LastActivateTime { get; set; }
-
-    internal ClientDic(User? user, IPEndPoint client)
+    public class ClientDic
     {
-        User = user;
-        Client = client;
-        LastActivateTime = DateTime.Now;
+        public readonly IPEndPoint Client;
+        public User? User;
+        internal PostManagement Post;
+        internal ReceiptManagement Receipt;
+        public DateTime LastActivateTime { get; set; }
 
-        Post = new PostManagement(client);
-        Receipt = new ReceiptManagement();
-        Receipt.Init();
-        Post.Init();
+        internal ClientDic(User? user, IPEndPoint client)
+        {
+            User = user;
+            Client = client;
+            LastActivateTime = DateTime.Now;
+
+            Post = new PostManagement(client);
+            Receipt = new ReceiptManagement();
+            Receipt.Init();
+            Post.Init();
+        }
     }
 }

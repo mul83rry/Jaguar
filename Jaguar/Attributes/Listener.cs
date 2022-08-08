@@ -1,9 +1,10 @@
-﻿namespace Jaguar.Attributes;
-
-[AttributeUsage(AttributeTargets.Method)]
-public class Listener : Attribute
+﻿namespace Jaguar.Attributes
 {
-    public string Name { get; set; }
+    [AttributeUsage(AttributeTargets.Method)]
+    public class Listener : Attribute
+    {
+        public string Name { get; set; }
 
-    public Listener(string name) => Name = name;
+        public Listener(string name) => Name = name;
+    }
 }
