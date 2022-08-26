@@ -69,10 +69,15 @@ namespace Jaguar.Core
             Logger = logger;
         }
 
+        public void AddListener<T>() where T : ListenersManager
+        {
+            _ = (T)Activator.CreateInstance(typeof(T), Array.Empty<object>());
+        }
+
         /// <summary>
         /// Start the server
         /// </summary>
-        protected void Start()
+        public void Start()
         {
             UdpSocket.Start();
         }
