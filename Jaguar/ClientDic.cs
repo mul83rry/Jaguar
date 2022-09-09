@@ -4,7 +4,7 @@ using Jaguar.Core.Processor;
 
 namespace Jaguar
 {
-    public class ClientDic
+    public class ClientDic : IDisposable
     {
         public readonly IPEndPoint Client;
         public User? User;
@@ -18,10 +18,16 @@ namespace Jaguar
             Client = client;
             LastActivateTime = DateTime.Now;
 
-            Post = new PostManagement(client);
-            Receipt = new ReceiptManagement();
+            Post = new PostManagement(client, this);
+            Receipt = new ReceiptManagement(this);
             Receipt.Init();
             Post.Init();
+        }
+
+        public void Dispose()
+        {
+            Post.Destroy();
+            Receipt.Destroy();
         }
     }
 }

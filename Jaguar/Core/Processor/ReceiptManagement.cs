@@ -10,16 +10,17 @@ namespace Jaguar.Core.Processor
 {
     internal class ReceiptManagement
     {
-        internal ReceiptManagement()
+        internal ReceiptManagement(ClientDic clientDic)
         {
             _receivedPacketsSituation = ImmutableDictionary.CreateBuilder<uint, bool>();
+            _clientDic = clientDic;
         }
 
         private readonly ImmutableDictionary<uint, bool>.Builder _receivedPacketsSituation;
         private readonly SortedList<uint, Packet> _receivedReliablePackets = new();
         private readonly ConcurrentQueue<(uint, Packet)> _receivedReliablePacketsInQueue = new();
         private readonly SortedList<uint, PacketInQueue> _reliableMessagesSequenced = new();
-
+        private readonly ClientDic _clientDic;
         private uint _lastReliableMessageIndexReceived;
         private bool _destroyed;
 
@@ -68,7 +69,10 @@ namespace Jaguar.Core.Processor
         {
             while (!_destroyed)
             {
-                await Task.Delay(5);
+                if (_clientDic.LastActivateTime.AddSeconds(70) < DateTime.Now)
+                {
+                    Destroy();
+                }
 
                 while (_receivedReliablePacketsInQueue.Count > 0)
                 {
@@ -118,6 +122,8 @@ namespace Jaguar.Core.Processor
                     CheckReliableMessagesSequenced();
                     i += starterPacket.Length - 1;
                 }
+
+                await Task.Delay(5);
             }
         }
 

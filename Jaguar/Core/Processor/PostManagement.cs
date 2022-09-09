@@ -9,6 +9,7 @@ namespace Jaguar.Core.Processor
     internal class PostManagement
     {
         private readonly IPEndPoint _ipEndPoint;
+        private readonly ClientDic _clientDic;
         private readonly ConcurrentDictionary<uint, bool> _sentPacketsSituation = new();
 
         private readonly ConcurrentQueue<Packet> _packetsInQueue = new();
@@ -23,9 +24,10 @@ namespace Jaguar.Core.Processor
             _destroyed = true;
         }
 
-        internal PostManagement(IPEndPoint ipEndPoint)
+        internal PostManagement(IPEndPoint ipEndPoint, ClientDic clientDic)
         {
             _ipEndPoint = ipEndPoint;
+            _clientDic = clientDic;
         }
 
         internal void Init() => _ = SendReliablePacketsAsync();
@@ -65,6 +67,10 @@ namespace Jaguar.Core.Processor
         {
             while (!_destroyed)
             {
+                if (_clientDic.LastActivateTime.AddSeconds(70) < DateTime.Now)
+                {
+                    Destroy();
+                }
                 while (_packetsInQueue.Count > 0)
                 {
                     _packetsInQueue.TryDequeue(out var packet);
