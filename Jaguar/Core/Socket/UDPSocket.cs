@@ -91,7 +91,7 @@ namespace Jaguar.Core.Socket
                 catch (Exception ex)
                 {
                     Server?.Logger?.Log(LogLevel.Error, $"Jaguar: {ex.Message}");
-                    CheckClientsConnection();
+                    //CheckClientsConnection();
                     _continueWhile = true;
                 }
 
@@ -262,7 +262,7 @@ namespace Jaguar.Core.Socket
                         Server?.Logger?.Log(LogLevel.Error, $"Jaguar: {ex.Message}");
                         try
                         {
-                            CheckClientsConnection();
+                            //CheckClientsConnection();
                         }
                         catch (Exception)
                         {
@@ -277,7 +277,7 @@ namespace Jaguar.Core.Socket
                 while (true)
                 {
                     await Task.Delay(2000);
-                    CheckClientsConnection();
+                    //CheckClientsConnection();
                 }
             });
 
@@ -374,31 +374,31 @@ namespace Jaguar.Core.Socket
 
 
 
-        private static void CheckClientsConnection()
-        {
-            var clients = Server.GetClients();
+        //private static void CheckClientsConnection()
+        //{
+        //    var clients = Server.GetClients();
 
-            for (var i = 0; i < clients.Count; i++)
-            {
-                var client = clients.ElementAt(i).Value;
-                var clientKey = clients.ElementAt(i).Key;
+        //    for (var i = 0; i < clients.Count; i++)
+        //    {
+        //        var client = clients.ElementAt(i).Value;
+        //        var clientKey = clients.ElementAt(i).Key;
 
-                if (client.LastActivateTime.AddSeconds(70) > DateTime.Now)
-                {
-                    continue;
-                }
+        //        if (client.LastActivateTime.AddSeconds(70) > DateTime.Now)
+        //        {
+        //            continue;
+        //        }
 
-                var inUse = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().GetActiveUdpListeners()
-                    .Any(p => p.Port == client.Client.Port);
-                if (inUse) continue;
-                Server.RemoveClient(clientKey);
+        //        var inUse = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().GetActiveUdpListeners()
+        //            .Any(p => p.Port == client.Client.Port);
+        //        if (inUse) continue;
+        //        Server.RemoveClient(clientKey);
 
-                client.Post.Destroy();
-                client.Receipt.Destroy();
+        //        client.Post.Destroy();
+        //        client.Receipt.Destroy();
 
-                Server.OnClientExited?.Invoke(client.Client);
-            }
-        }
+        //        Server.OnClientExited?.Invoke(client.Client);
+        //    }
+        //}
 
         internal static void Send(IPEndPoint? ep, Packet packet)
         {
