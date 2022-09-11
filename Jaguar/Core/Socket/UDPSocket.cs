@@ -107,7 +107,8 @@ namespace Jaguar.Core.Socket
             internal UdpListener(IPEndPoint sender)
             {
                 Client = new UdpClient(sender);
-                Client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                //Client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                Client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
 
                 const int iocIn = unchecked((int)0x80000000);
                 const int iocVendor = 0x18000000;
@@ -115,7 +116,7 @@ namespace Jaguar.Core.Socket
 
                 byte[] optionInValue = { Convert.ToByte(false) };
                 var optionOutValue = new byte[4];
-                Client.Client.IOControl(sioUdpConnreset, optionInValue, optionOutValue);
+                //Client.Client.IOControl(sioUdpConnreset, optionInValue, optionOutValue);
             }
 
             internal void Send(IPEndPoint? endpoint, byte[] dataGram)
