@@ -33,7 +33,7 @@ namespace Jaguar.Manager
         /// <returns></returns>
         public static Room? FindRoom(long id) => GetRooms<Room>().SingleOrDefault(r => r.UniqueId == id);
     
-        public static Room? FindRoomWithUser(long id) => GetRooms<Room>().SingleOrDefault(r => r.Users.Any(u => u.UniqueId == id));
+        public static Room? FindRoomWithUser(long userId) => GetRooms<Room>().SingleOrDefault(r => r.Users.Any(u => u.UniqueId == userId));
 
         /// <summary>
         /// return room with user

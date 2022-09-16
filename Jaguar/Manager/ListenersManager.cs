@@ -75,7 +75,7 @@ namespace Jaguar.Manager
             {
                 foreach (Attribute attribute in method.ReturnTypeCustomAttributes.GetCustomAttributes(true))
                 {
-                    if (attribute is not AsyncListener listener) continue;
+                    if (attribute is not CallBackListener listener) continue;
 
                     var eventName = !string.IsNullOrEmpty(listener.Name) ? listener.Name : method.Name;
                     var parameters = method.GetParameters();
