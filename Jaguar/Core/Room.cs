@@ -14,11 +14,12 @@ namespace Jaguar.Core
         private Range _usersCount;
 
         /// <summary>
-        /// Room access level.
+        /// Rooms access level.
         /// </summary>
         public AccessMode AccessMode { get; init; }
 
-        public bool AllUsersJoined => _maxUser == Users.Count(u => u is { InRoom: true });
+        public bool AllUsersJoined => _maxUser == Users.Count;
+        //public bool AllUsersJoined => _maxUser == Users.Count(u => u is { InRoom: true });
 
         /// <summary>
         /// it return current playing round.
@@ -86,7 +87,7 @@ namespace Jaguar.Core
 
         public DateTime CreationTime { get; private set; }
 
-        #region Room events
+        #region Rooms events
 
         /// <summary>
         /// game completed.
@@ -159,7 +160,7 @@ namespace Jaguar.Core
             return Task.CompletedTask;
         }
 
-        #endregion Room events
+        #endregion Rooms events
 
         internal Round[] Rounds { get; set; }
 
@@ -206,7 +207,7 @@ namespace Jaguar.Core
                 return false;
             }
 
-            user.Room = this;
+            user.SetAsCurrentRoom(this);
             Users = Users.Add(user);
 
 
@@ -223,21 +224,21 @@ namespace Jaguar.Core
             return true;
         }
 
-        public void CleanUsers()
-        {
-            foreach (var user in Users.Where(u => u is { InRoom: false }))
-            {
-                if (user != null) Server.RemoveUsersUniqueId(user.UniqueId);
-            }
+        //public void CleanUsers()
+        //{
+        //    foreach (var user in Users.Where(u => u is { InRoom: false }))
+        //    {
+        //        if (user != null) Server.RemoveUsersUniqueId(user.UniqueId);
+        //    }
 
-            Users = Users.RemoveAll(u => u is { InRoom: false });
-        }
+        //    Users = Users.RemoveAll(u => u is { InRoom: false });
+        //}
 
         public void Destroy()
         {
             while (Users.Count > 0)
             {
-                Users[0]!.Room = null;
+                Users[0]?.SetCurrentRoomToNull();
                 Users = Users.RemoveAt(0);
             }
 
@@ -334,10 +335,7 @@ namespace Jaguar.Core
             await UserExitedAsync(user);
         }
 
-        private static void RemoveFromRoomWithoutCloneTheUser(User? user)
-        {
-            if (user != null) user.Room = null;
-        }
+        private static void RemoveFromRoomWithoutCloneTheUser(User? user) => user?.SetCurrentRoomToNull();
 
         private void RemoveFromRoom(User? user, bool keepCash = true)
         {
@@ -346,7 +344,7 @@ namespace Jaguar.Core
             if (GameStarted)
             {
                 if (user == null) return;
-                user.Room = null;
+                user.SetCurrentRoomToNull();
 
                 if (!keepCash)
                 {
@@ -359,14 +357,14 @@ namespace Jaguar.Core
                     if (oldUser == null) return;
 
                     Users = Users.Replace(user, clonedUser);
-                    clonedUser.InRoom = false;
+                    //clonedUser.InRoom = false;
                 }
             }
             else
             {
                 if (user == null) return;
                 Users = Users.Remove(user);
-                user.Room = null;
+                user.SetCurrentRoomToNull();
             }
 
         }

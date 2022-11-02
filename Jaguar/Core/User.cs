@@ -15,25 +15,35 @@ namespace Jaguar.Core
         /// </summary>
         [NonSerialized] internal IPEndPoint? Client;
 
-        private Room? _room;
-
-        public bool InRoom { get; internal set; }
+        //public bool InRoom { get; internal set; }
 
         public bool IsOnline { get; internal set; }
 
         public DateTime LastActivateTime => Server.GetClients()[Client.ConvertToKey()].LastActivateTime;
 
         /// <summary>
+        /// user rooms
+        /// </summary>
+        public List<Room?> Rooms { get; } = new();
+
+
+        /// <summary>
         /// user current room
         /// </summary>
-        public Room? Room
+        public Room? CurrentRoom { get; private set; }
+
+        public bool SetAsCurrentRoom(Room? room)
         {
-            get => _room; internal set
-            {
-                _room = value;
-                InRoom = value != null;
-            }
+            if (room == null) return false;
+            if (!Rooms.Contains(room)) return false;
+            if (!room.Users.Any(u => u.UniqueId == UniqueId)) return false;
+
+            CurrentRoom = room;
+            
+            return true;
         }
+
+        public void SetCurrentRoomToNull() => CurrentRoom = null;
 
         /// <summary>
         /// unique id of user
@@ -81,10 +91,10 @@ namespace Jaguar.Core
         /// <exception cref="Exception">throw an error if user is`t currently present in any round or room of user is null.</exception>
         public bool AddScore()
         {
-            if (Room == null) return false;
-            if (Room.CurrentRound == null) return false;
+            if (CurrentRoom == null) return false;
+            if (CurrentRoom.CurrentRound == null) return false;
 
-            Room.CurrentRound.TryAddScore(this);
+            CurrentRoom.CurrentRound.TryAddScore(this);
             return true;
         }
 
@@ -94,10 +104,10 @@ namespace Jaguar.Core
         /// <exception cref="Exception">throw an error if user is`t currently present in any round or room of user is null.</exception>
         public bool AddScore(double count, int roundIndex)
         {
-            if (Room == null) return false;
-            if (roundIndex >= Room.Rounds.Length) return false;
+            if (CurrentRoom == null) return false;
+            if (roundIndex >= CurrentRoom.Rounds.Length) return false;
 
-            Room.Rounds[roundIndex].TryAddScore(this, count);
+            CurrentRoom.Rounds[roundIndex].TryAddScore(this, count);
             return true;
         }
 
@@ -107,10 +117,10 @@ namespace Jaguar.Core
         /// <exception cref="Exception">throw an error if user is`t currently present in any round or room of user is null.</exception>
         public bool AddScore(double count)
         {
-            if (Room == null) return false;
-            if (Room.CurrentRound == null) return false;
+            if (CurrentRoom == null) return false;
+            if (CurrentRoom.CurrentRound == null) return false;
 
-            Room.CurrentRound.TryAddScore(this, count);
+            CurrentRoom.CurrentRound.TryAddScore(this, count);
             return true;
         }
 
@@ -118,12 +128,11 @@ namespace Jaguar.Core
         {
             roundsCount = 0;
             result = 0;
-            if (Room is not { GameStarted: true }) return false;
+            if (CurrentRoom is not { GameStarted: true }) return false;
 
-            //if (_room != null) roundsCount = _room.Rounds.Length;
-            foreach (var round in Room.Rounds)
+            //if (_rooms != null) roundsCount = _rooms.Rounds.Length;
+            foreach (var round in CurrentRoom.Rounds)
             {
-                if (round == null) continue; // todo: test
                 roundsCount++;
                 round.TryGetScore(this, out var roundScore);
                 result += roundScore;
@@ -139,12 +148,11 @@ namespace Jaguar.Core
         /// <exception cref="Exception">throw an error if user is`t currently present in any round or room of user is null or round index is out of range.</exception>
         public double Score(int roundIndex)
         {
-            if (Room == null) return RoomNotFoundCode; // throw new Exception("room not found 6");
-            if (roundIndex > Room.Rounds.Length) throw new IndexOutOfRangeException("Index out of range");
-            if (Room.Rounds[roundIndex] == null) throw new Exception("Round not started");
+            if (CurrentRoom == null) return RoomNotFoundCode; // throw new Exception("room not found 6");
+            if (roundIndex > CurrentRoom.Rounds.Length) throw new IndexOutOfRangeException("Index out of range");
+            if (CurrentRoom.Rounds[roundIndex] == null) throw new Exception("Round not started");
 
-
-            Room.Rounds[roundIndex].TryGetScore(this, out var score);
+            CurrentRoom.Rounds[roundIndex].TryGetScore(this, out var score);
             return score;
         }
 

@@ -32,28 +32,30 @@ namespace Jaguar.Manager
         /// <param name="id">unique id of room</param>
         /// <returns></returns>
         public static Room? FindRoom(long id) => GetRooms<Room>().SingleOrDefault(r => r.UniqueId == id);
-    
-        public static Room? FindRoomWithUser(long userId) => GetRooms<Room>().SingleOrDefault(r => r.Users.Any(u => u.UniqueId == userId));
+
+        public static T[] FindRoomsWithUser<T>(long userId) where T : Room =>
+            GetRooms<T>().Where(r => r.Users.Any(u => u != null && u.UniqueId == userId)).ToArray();
 
         /// <summary>
         /// return room with user
         /// </summary>
         /// <param name="user"></param>
         /// <returns></returns>
-        public static Room FindRoom(User user) => GetRooms<Room>().SingleOrDefault(r => r.Users.Any(u => u != null && u.UniqueId == user.UniqueId))!;
+        public static T[] FindRooms<T>(User user) where T : Room =>
+            GetRooms<T>().Where(r => r.Users.Any(u => u != null && u.UniqueId == user.UniqueId)).ToArray();
 
         /// <summary>
         /// join to a random room
         /// </summary>
         /// <param name="user"></param>
         /// <returns>true if can join</returns>
-        public static async Task<bool> JoinAsync(User user)
+        public static async Task<bool> JoinAsync<T>(User user) where T : Room
         {
-            if (user.InRoom) return false;
-            var room = FindRoomWithType(0);
-            if (room == null) return false;
+            //if (user.InRoom) return false;
+            var rooms = FindRoomsWithType<T>(typeId: 0);
+            if (!rooms.Any()) return false;
 
-            return await room.AddUserAsync(user);
+            return await rooms[0].AddUserAsync(user);
         }
 
         /// <summary>
@@ -62,9 +64,9 @@ namespace Jaguar.Manager
         /// <param name="user"></param>
         /// <param name="options"></param>
         /// <returns>true if can join</returns>
-        public static async Task<bool> JoinAsync(User user, JoinOptions options)
+        public static async Task<bool> JoinAsync<T>(User user, JoinOptions options) where T : Room
         {
-            if (user.InRoom) return false;
+            //if (user.InRoom) return false;
             if (options.RoomId.HasValue)
             {
                 var room = FindRoom(id: options.RoomId.Value);
@@ -81,27 +83,27 @@ namespace Jaguar.Manager
             {
                 if (options.Level.HasValue)
                 {
-                    var room1 = FindRoomWithTypeIdAndLevel(options.Level.Value, options.TypeId.Value);
-                    if (room1 == null)
+                    var rooms1 = FindRoomsWithTypeIdAndLevel<T>(options.Level.Value, options.TypeId.Value);
+                    if (!rooms1.Any())
                         return false;
 
-                    return await room1.AddUserAsync(user);
+                    return await rooms1[0].AddUserAsync(user);
                 }
 
-                var room2 = FindRoomWithType(options.TypeId.Value);
-                if (room2 == null)
+                var rooms2 = FindRoomsWithType<T>(options.TypeId.Value);
+                if (!rooms2.Any())
                     return false;
 
-                return await room2.AddUserAsync(user);
+                return await rooms2[0].AddUserAsync(user);
             }
 
             if (options.Level.HasValue)
             {
-                var room = FindRoomWithLevel(options.Level.Value);
-                if (room == null)
+                var rooms = FindRoomsWithLevel<T>(options.Level.Value);
+                if (!rooms.Any())
                     return false;
 
-                return await room.AddUserAsync(user);
+                return await rooms[0].AddUserAsync(user);
             }
 
             return false;
@@ -118,7 +120,7 @@ namespace Jaguar.Manager
 
             user = room.Users.Single(u => u != null && u.UniqueId == uniqueId) ?? throw new InvalidOperationException();
             user.UpdateClient(client);
-            user.Room = room;
+            //user.Rooms = room;
             room.OnUserRejoined(user);
 
             return true;
@@ -145,27 +147,23 @@ namespace Jaguar.Manager
 
             foreach (var user in room.Users)
             {
-                if (user != null) user.Room = null;
+                user?.SetCurrentRoomToNull();
             }
         }
 
-        private static Room? FindRoomWithType(uint typeId) => GetRooms<Room>().FirstOrDefault(r => (!r.IsPlaying || r.EnableJoinAfterGameStarted) && r.AccessMode == AccessMode.Public
-            && !r.AllUsersJoined && typeId == r.TypeId && r.Users.Count(rr => rr is
-            {
-                InRoom: true
-            }) > 0);
+        private static T[] FindRoomsWithType<T>(uint typeId) where T : Room =>
+            GetRooms<T>().Where(r => (!r.IsPlaying || r.EnableJoinAfterGameStarted) && r.AccessMode == AccessMode.Public
+            && !r.AllUsersJoined && typeId == r.TypeId && r.Users.Count > 0).ToArray();
 
-        private static Room? FindRoomWithLevel(uint level) => GetRooms<Room>().FirstOrDefault(r => (!r.IsPlaying || r.EnableJoinAfterGameStarted)
-            && r.AccessMode == AccessMode.Public && r.AllUsersJoined == false && r.Level.InRange(level) && r.Users.Count(rr => rr is
-            {
-                InRoom: true
-            }) > 0);
+        private static T[] FindRoomsWithLevel<T>(uint level) where T : Room =>
+            GetRooms<T>().Where(r => (!r.IsPlaying || r.EnableJoinAfterGameStarted)
+            && r.AccessMode == AccessMode.Public && r.AllUsersJoined == false && r.Level.InRange(level) && r.Users.Count > 0)
+                .ToArray();
 
-        private static Room? FindRoomWithTypeIdAndLevel(uint level, uint typeId) =>
-            GetRooms<Room>().FirstOrDefault(r => (!r.IsPlaying || r.EnableJoinAfterGameStarted) && r.Level.InRange(level) && r.AccessMode == AccessMode.Public && !r.AllUsersJoined && r.Users.Count(rr => rr is
-            {
-                InRoom: true
-            }) > 0 && r.TypeId == typeId);
+        private static T[] FindRoomsWithTypeIdAndLevel<T>(uint level, uint typeId) where T : Room =>
+            GetRooms<T>()
+                .Where(r => (!r.IsPlaying || r.EnableJoinAfterGameStarted) && r.Level.InRange(level) && r.AccessMode == AccessMode.Public && !r.AllUsersJoined && r.Users.Count > 0 && r.TypeId == typeId)
+                .ToArray();
 
         private static long GenerateUniqueId()
         {
