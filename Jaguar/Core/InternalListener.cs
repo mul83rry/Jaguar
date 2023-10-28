@@ -2,46 +2,63 @@
 using Jaguar.Extensions;
 using Jaguar.Manager;
 
-namespace Jaguar.Core
+namespace Jaguar.Core;
+
+internal class InternalListener : ListenersManager
 {
-    internal class InternalListener : ListenersManager
+    [Attributes.Listener("PRC")]
+    public static Task PacketReceivedCallBack(IPEndPoint sender, uint packetIndex)
     {
-        [Attributes.Listener("PRC")]
-        public static Task PacketReceivedCallBack(IPEndPoint sender, uint packetIndex)
-        {
-            var clients = Server.GetClients();
+        var clients = Server.GetClients();
 
-            if (!clients.Values.Any(c => c.Client.ConvertToKey()!.Equals(sender.ConvertToKey())))
-                return Task.CompletedTask;
-
-            if (!clients.ContainsKey(sender.ConvertToKey())) return Task.CompletedTask;
-            var udpClient = clients[sender.ConvertToKey()];
-            udpClient.Post.PacketReceivedCallBack(packetIndex);
-
+        if (!clients.Values.Any(c => c.Client.ConvertToKey().Equals(sender.ConvertToKey())))
             return Task.CompletedTask;
-        }
 
-        [Attributes.Listener("IA")]
-        public static Task Alive(IPEndPoint sender, string _) => Task.CompletedTask;
+        if (!clients.ContainsKey(sender.ConvertToKey())) return Task.CompletedTask;
+        var udpClient = clients[sender.ConvertToKey()];
+        udpClient.PacketSender.PacketReceivedCallBack(packetIndex);
 
-        [Attributes.Listener("JTS")]
-        public static Task JoinToServer(IPEndPoint sender, string _)
+        return Task.CompletedTask;
+    }
+
+    [Attributes.Listener("IA")]
+    public static Task Alive(IPEndPoint sender, string _) => Task.CompletedTask;
+
+    [Attributes.Listener("JTS")]
+    public static async Task JoinToServer(IPEndPoint sender, string _)
+    {
+        var clients = Server.GetClients();
+        var senderKey = sender.ConvertToKey();
+        if (string.IsNullOrEmpty(senderKey)) return;
+        if (!clients.Values.Any(c => c.Client.ConvertToKey().Equals(senderKey)))
         {
-            var clients = Server.GetClients();
-            var senderKey = sender.ConvertToKey();
-            if (string.IsNullOrEmpty(senderKey)) return Task.CompletedTask;
-            if (!clients.Values.Any(c => c.Client.ConvertToKey().Equals(senderKey)))
+            using var clientDic = new ClientDic(null, sender);
+            Server.AddClient(senderKey, clientDic);
+
+            Task.Run(() =>
+                // init 
             {
-                var clientDic = new ClientDic(null, sender);
-                Server.AddClient(senderKey, clientDic);
+                clientDic.PacketSender.StartReliablePacketsServiceAsync();
+                clientDic.PacketReceiver.CheckSequenceDataAsync();
+                Console.WriteLine("START");
+            });
 
-                Server.OnNewClientJoined?.Invoke(sender);
+            Server.OnNewClientJoined?.Invoke(sender);
 
-                // send join call back
-                clientDic.Post.SendReliablePacket("JTS", $"{Settings.MaxPacketSize},{Settings.MaxPacketInQueue}");//1: Max packet size, 2: Max packets in queue
+            // send join call back
+            clientDic.PacketSender.SendReliablePacket("JTS",
+                $"{Settings.MaxPacketSize},{Settings.MaxPacketInQueue}"); //1: Max packet size, 2: Max packets in queue
+
+            while (!clientDic.PacketReceiver.Destroyed || !clientDic.PacketSender.Destroyed)
+            {
+                await Task.Delay(500);
             }
 
-            return Task.CompletedTask;
+            // clientDic.PacketSender.Destroy();
+            // clientDic.PacketReceiver.Destroy();
+
+            Server.RemoveClient(senderKey);
+            Console.WriteLine("END");
         }
     }
 }

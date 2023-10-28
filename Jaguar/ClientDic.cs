@@ -1,33 +1,35 @@
 ﻿using System.Net;
 using Jaguar.Core;
 using Jaguar.Core.Processor;
+using Jaguar.Extensions;
 
-namespace Jaguar
+namespace Jaguar;
+
+public class ClientDic : IDisposable
 {
-    public class ClientDic : IDisposable
+    public readonly IPEndPoint Client;
+    public User? User;
+    internal readonly PacketSender PacketSender;
+    internal readonly PacketReceiver PacketReceiver;
+    public DateTime LastActivateTime { get; set; }
+
+    internal ClientDic(User? user, IPEndPoint client)
     {
-        public readonly IPEndPoint Client;
-        public User? User;
-        internal PostManagement Post;
-        internal ReceiptManagement Receipt;
-        public DateTime LastActivateTime { get; set; }
+        User = user;
+        Client = client;
+        LastActivateTime = DateTime.UtcNow;
 
-        internal ClientDic(User? user, IPEndPoint client)
-        {
-            User = user;
-            Client = client;
-            LastActivateTime = DateTime.Now;
+        PacketSender = new PacketSender(client, this);
+        PacketReceiver = new PacketReceiver(this);
+        // PacketReceiver.Init();
+        // PacketSender.Init();
+    }
 
-            Post = new PostManagement(client, this);
-            Receipt = new ReceiptManagement(this);
-            Receipt.Init();
-            Post.Init();
-        }
-
-        public void Dispose()
-        {
-            Post.Destroy();
-            Receipt.Destroy();
-        }
+    public void Dispose()
+    {
+        Console.WriteLine($"ClientDic {Client.ConvertToKey()} And User UniqueId {User?.UniqueId ?? null} Disposed");
+        User?.Dispose();
+        // PacketSender.Destroy();
+        // PacketReceiver.Destroy();
     }
 }

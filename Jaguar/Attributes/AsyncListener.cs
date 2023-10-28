@@ -1,9 +1,9 @@
 ﻿namespace Jaguar.Attributes;
 
 [AttributeUsage(AttributeTargets.ReturnValue)]
-public class CallBackListener : Attribute
+public class AsyncListener : Attribute
 {
     public string Name { get; set; }
 
-    public CallBackListener(string name) => Name = name;
+    public AsyncListener(string name) => Name = name;
 }

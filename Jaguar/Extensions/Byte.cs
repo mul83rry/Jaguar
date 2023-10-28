@@ -1,9 +1,8 @@
-﻿namespace Jaguar.Extensions
-{
-    internal static class Byte
-    {
-        internal static byte[] Compress(this byte[] bytes) => bytes;
+﻿namespace Jaguar.Extensions;
 
-        internal static byte[] Decompress(this byte[] bytes) => bytes;
-    }
+internal static class Byte
+{
+    internal static byte[] Compress(this byte[] bytes) => bytes;
+
+    internal static byte[] Decompress(this byte[] bytes) => bytes;
 }
