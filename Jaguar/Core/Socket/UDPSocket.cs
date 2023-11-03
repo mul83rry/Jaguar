@@ -4,7 +4,8 @@ using Jaguar.Core.Data;
 using Jaguar.Extensions;
 using Jaguar.Manager;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
+using JsonConverter = System.Text.Json.JsonSerializer;
+
 
 namespace Jaguar.Core.Socket;
 
@@ -87,7 +88,8 @@ internal static class UdpSocket
             }
             catch (Exception ex)
             {
-                Server.Logger?.Log(LogLevel.Error, $"Jaguar_1: {ex.Message},,,,{ex.StackTrace},,,,{ex.Source},,,,{ex.InnerException},,,,{ex.Data},,,,{ex.TargetSite}");
+                Server.Logger?.Log(LogLevel.Error,
+                    $"Jaguar_1: {ex.Message},,,,{ex.StackTrace},,,,{ex.Source},,,,{ex.InnerException},,,,{ex.Data},,,,{ex.TargetSite}");
                 //CheckClientsConnection();
                 _continueWhile = true;
             }
@@ -146,6 +148,7 @@ internal static class UdpSocket
                     {
                         continue;
                     }
+
                     _continueWhile = false;
 
 
@@ -163,7 +166,7 @@ internal static class UdpSocket
                             }
                         }
                     }
-                        
+
                     if (received.Packet.EventName == ByteListenerKey)
                     {
                         if (received.Packet.Sender != null)
@@ -214,6 +217,7 @@ internal static class UdpSocket
                                     Server.Logger?.Log(LogLevel.Warning, $"Jaguar: Client not found");
                                     continue;
                                 }
+
                                 if (client is not null)
                                 {
                                     client.PacketReceiver
@@ -242,7 +246,7 @@ internal static class UdpSocket
                                     continue;
                                 }
 
-                                var data = JsonConvert.DeserializeObject(received.Packet.Message, type);
+                                var data = JsonConverter.Deserialize(received.Packet.Message, type);
                                 normalTask.Method?.Invoke(
                                     normalTask.ListenersManager
                                     , new[] {convertedSender, data});
@@ -350,14 +354,16 @@ internal static class UdpSocket
                     }
 
                     if (packet.Message == null) return;
+
                     {
                         var type = Server.CallBackListenersDic[packet.EventName].FunctionType;
                         if (type == null) return;
+
                         var result = Server.CallBackListenersDic[packet.EventName].Method?.Invoke(
                             Server.CallBackListenersDic[packet.EventName].ListenersManager
                             , type == typeof(string)
                                 ? new[] {convertedSender, packet.Message}
-                                : new[] {convertedSender, JsonConvert.DeserializeObject(packet.Message, type)});
+                                : new[] {convertedSender, JsonConverter.Deserialize(packet.Message, type)});
 
                         if (!clients.ContainsKey(sender.ConvertToKey())) return;
                         if (result != null)
@@ -402,7 +408,7 @@ internal static class UdpSocket
                                 : new[]
                                 {
                                     convertedSender,
-                                    JsonConvert.DeserializeObject(packet.Message,
+                                    JsonConverter.Deserialize(packet.Message,
                                         type1)
                                 });
                     }

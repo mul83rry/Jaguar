@@ -4,7 +4,8 @@ using System.Net;
 using System.Text;
 using Jaguar.Core.Data;
 using Jaguar.Core.Socket;
-using Newtonsoft.Json;
+using JsonConverter = System.Text.Json.JsonSerializer;
+
 
 namespace Jaguar.Core.Processor;
 
@@ -38,7 +39,7 @@ internal class PacketReceiver
         {
             if (value)
             {
-                var log = JsonConvert.SerializeObject(_receivedPacketsSituation);
+                var log = JsonConverter.Serialize(_receivedPacketsSituation);
                 // Console.WriteLine($"ReceivedReliablePacket: {log}");
                 return;
             }
@@ -66,7 +67,7 @@ internal class PacketReceiver
                 p.Value.Message != null && p.Value.Message.Length > 5 && p.Value.Message == packet.Message &&
                 MathF.Abs(packet.Index - p.Value.Index) < 2);
             var log =
-                $"Packet_0:\n{JsonConvert.SerializeObject(packet)}\n\nPacket_1:\n{JsonConvert.SerializeObject(otherPacket)}";
+                $"Packet_0:\n{JsonConverter.Serialize(packet)}\n\nPacket_1:\n{JsonConverter.Serialize(otherPacket)}";
             SaveLog(log);
         }
 

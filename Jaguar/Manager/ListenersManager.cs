@@ -43,7 +43,7 @@ public abstract class ListenersManager
                 if (method.ReturnType != typeof(Task))
                     throw new Exception($"Type of method '{method.Name}' must be Task.");
 
-                var task = new MuTask
+                var task = new JaguarTask
                 {
                     FunctionType = parameters[1].ParameterType,
                     Method = method,
@@ -80,7 +80,7 @@ public abstract class ListenersManager
                 var eventName = !string.IsNullOrEmpty(listener.Name) ? listener.Name : method.Name;
                 var parameters = method.GetParameters();
                     
-                var task = new MuTask
+                var task = new JaguarTask
                 {
                     FunctionType = parameters[1].ParameterType,
                     Method = method,

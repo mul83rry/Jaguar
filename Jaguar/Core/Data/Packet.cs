@@ -1,6 +1,6 @@
 ﻿using System.Net;
 using System.Text;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace Jaguar.Core.Data;
 
@@ -82,14 +82,14 @@ public struct Packet
     }
 
 
-    [JsonProperty("I")] public uint Index { get; set; }
-    [JsonProperty("E")] public string EventName { get; set; }
-    [JsonProperty("M")] public string? Message { get; set; }
-    [JsonProperty("R")] public bool Reliable { get; set; }
-    [JsonProperty("SI")] public byte SignIndex { get; set; } // Start from '1'
-    [JsonProperty("B")] public bool BigData { get; set; }
-    [JsonProperty("S")] public bool StarterPack { get; set; }
-    [JsonProperty("L")] public uint Length { get; set; }
+    [JsonPropertyName("I")] public uint Index { get; set; }
+    [JsonPropertyName("E")] public string EventName { get; set; }
+    [JsonPropertyName("M")] public string? Message { get; set; }
+    [JsonPropertyName("R")] public bool Reliable { get; set; }
+    [JsonPropertyName("SI")] public byte SignIndex { get; set; } // Start from '1'
+    [JsonPropertyName("B")] public bool BigData { get; set; }
+    [JsonPropertyName("S")] public bool StarterPack { get; set; }
+    [JsonPropertyName("L")] public uint Length { get; set; }
 
     [JsonIgnore] public IPEndPoint? Sender { get; set; }
     [JsonIgnore] public Action<uint>? OnPacketArrived { get; set; }

@@ -4,7 +4,7 @@ using Jaguar.Core.Data;
 using Jaguar.Core.Socket;
 using Jaguar.Extensions;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
+using JsonConverter = System.Text.Json.JsonSerializer;
 
 namespace Jaguar.Core.Processor;
 
@@ -45,7 +45,7 @@ internal class PacketSender
 
     internal void SendReliablePacket(string eventName, object message, Action<uint>? onPacketArrived = null)
     {
-        var msg = message is string ? message.ToString() : JsonConvert.SerializeObject(message);
+        var msg = message is string ? message.ToString() : JsonConverter.Serialize(message);
 
         var packet = new Packet(0, eventName, msg, true, 0) {Sender = _ipEndPoint};
         if (onPacketArrived != null)
@@ -57,7 +57,7 @@ internal class PacketSender
     internal void SendReliablePacket(string eventName, object message, byte signIndex,
         Action<uint>? onPacketArrived = null)
     {
-        var msg = message is string ? message.ToString() : JsonConvert.SerializeObject(message);
+        var msg = message is string ? message.ToString() : JsonConverter.Serialize(message);
 
         var packet = new Packet(0, eventName, msg, true, signIndex) {Sender = _ipEndPoint};
         if (onPacketArrived != null)
@@ -68,7 +68,7 @@ internal class PacketSender
 
     internal void SendPacket(string eventName, object message)
     {
-        var msg = message is string ? message.ToString() : JsonConvert.SerializeObject(message);
+        var msg = message is string ? message.ToString() : JsonConverter.Serialize(message);
 
         var packet = new Packet(0, eventName, msg, false, 0) {Sender = _ipEndPoint};
         SendPacket(packet);
@@ -91,7 +91,7 @@ internal class PacketSender
 
                 if (packet.Message is null)
                 {
-                    Server.Logger?.LogError($"Invalid message \n{JsonConvert.SerializeObject(packet)}");
+                    Server.Logger?.LogError($"Invalid message \n{JsonConverter.Serialize(packet)}");
                     continue;
                 }
 

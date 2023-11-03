@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Jaguar.Core;
 
-public class MuTask
+public class JaguarTask
 {
     public Type? FunctionType { get; init; }
     public MethodInfo? Method;
@@ -24,8 +24,8 @@ public class Server
     public static Action<IPEndPoint>? OnClientExited;
     public static Action<string, int>? OnServerStarted;
 
-    internal static readonly ConcurrentDictionary<string, MuTask> ListenersDic = new();
-    internal static readonly ConcurrentDictionary<string, MuTask> CallBackListenersDic = new();
+    internal static readonly ConcurrentDictionary<string, JaguarTask> ListenersDic = new();
+    internal static readonly ConcurrentDictionary<string, JaguarTask> CallBackListenersDic = new();
 
     private static ImmutableList<long> _usersUniqueId = ImmutableList<long>.Empty;
 
@@ -91,20 +91,20 @@ public class Server
     /// add an listener for a new 'eventName'.
     /// </summary>
     /// <param name="eventName">server listen to this eventName.</param>
-    /// <param name="muTask">server invoke this event after eventName called.</param>
-    internal static bool AddListener(string eventName, MuTask muTask)
+    /// <param name="jaguarTask">server invoke this event after eventName called.</param>
+    internal static bool AddListener(string eventName, JaguarTask jaguarTask)
     {
-        return ListenersDic.TryAdd(eventName, muTask);
+        return ListenersDic.TryAdd(eventName, jaguarTask);
     }
 
     /// <summary>
     /// add an listener for a new 'eventName'.
     /// </summary>
     /// <param name="eventName">server listen to this eventName.</param>
-    /// <param name="muTask">server invoke this event after eventName called.</param>
-    internal static bool AddAsyncListener(string eventName, MuTask muTask)
+    /// <param name="jaguarTask">server invoke this event after eventName called.</param>
+    internal static bool AddAsyncListener(string eventName, JaguarTask jaguarTask)
     {
-        return CallBackListenersDic.TryAdd(eventName, muTask);
+        return CallBackListenersDic.TryAdd(eventName, jaguarTask);
     }
 
     public static void Send(User user, string eventName, object message)
