@@ -11,7 +11,7 @@ namespace Jaguar.Core.Handlers;
 internal class PacketSender
 {
     private readonly IPEndPoint _ipEndPoint;
-    private readonly ClientDic _clientDic;
+    private readonly ClientData _clientData;
     private readonly ConcurrentDictionary<uint, bool> _sentPacketsSituation = new();
 
     private readonly ConcurrentQueue<Packet> _packetsInQueue = new();
@@ -30,10 +30,10 @@ internal class PacketSender
         PostManagementCounter--;
     }
 
-    internal PacketSender(IPEndPoint ipEndPoint, ClientDic clientDic)
+    internal PacketSender(IPEndPoint ipEndPoint, ClientData clientData)
     {
         _ipEndPoint = ipEndPoint;
-        _clientDic = clientDic;
+        _clientData = clientData;
     }
 
     static PacketSender()
@@ -78,7 +78,7 @@ internal class PacketSender
     {
         while (!_destroyed)
         {
-            if (_clientDic.LastActivateTime.Add(Settings.DisconnectUserAfterDeActive) < DateTime.UtcNow)
+            if (_clientData.LastActivateTime.Add(Settings.DisconnectUserAfterDeActive) < DateTime.UtcNow)
             {
                 // Destroy
                 _destroyed = true;

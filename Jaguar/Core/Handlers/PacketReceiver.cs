@@ -11,17 +11,17 @@ namespace Jaguar.Core.Handlers;
 
 internal class PacketReceiver
 {
-    internal PacketReceiver(ClientDic clientDic)
+    internal PacketReceiver(ClientData clientData)
     {
         _receivedPacketsSituation = ImmutableDictionary.CreateBuilder<uint, bool>();
-        _clientDic = clientDic;
+        _clientData = clientData;
     }
 
     private readonly ImmutableDictionary<uint, bool>.Builder _receivedPacketsSituation;
     private readonly SortedList<uint, Packet> _receivedReliablePackets = new();
     private readonly ConcurrentQueue<(uint, Packet)> _receivedReliablePacketsInQueue = new();
     private readonly SortedList<uint, PacketInQueue> _reliableMessagesSequenced = new();
-    private readonly ClientDic _clientDic;
+    private readonly ClientData _clientData;
     private uint _lastReliableMessageIndexReceived;
     private bool _destroyed;
 
@@ -86,7 +86,7 @@ internal class PacketReceiver
     {
         while (!_destroyed)
         {
-            if (_clientDic.LastActivateTime.AddSeconds(100) < DateTime.UtcNow)
+            if (_clientData.LastActivateTime.AddSeconds(100) < DateTime.UtcNow)
             {
                 // Destroy
                 _destroyed = true;

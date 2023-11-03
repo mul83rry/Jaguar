@@ -31,12 +31,12 @@ public class Server
     private static ImmutableList<long> _usersUniqueId = ImmutableList<long>.Empty;
 
 
-    private static readonly ConcurrentDictionary<string, ClientDic> Clients = new();
+    private static readonly ConcurrentDictionary<string, ClientData> Clients = new();
 
     internal static ILogger? Logger;
 
 
-    public static Dictionary<string, ClientDic?> GetClients() => new(Clients!);
+    public static Dictionary<string, ClientData?> GetClients() => new(Clients!);
 
     public static int ClientsCount => GetClients().Count;
 
@@ -308,9 +308,9 @@ public class Server
         Clients.TryRemove(clientKey, out _);
     }
 
-    public static void AddClient(string senderKey, ClientDic clientDic)
+    public static void AddClient(string senderKey, ClientData clientData)
     {
-        Clients.TryAdd(senderKey, clientDic);
+        Clients.TryAdd(senderKey, clientData);
     }
 
     public static void RemoveUsersUniqueId(long userUniqueId)

@@ -12,7 +12,7 @@ public static class UsersManager
     public static int OnlineClientsCounts => Server.GetClients().Count(c => c.Value.User is { IsOnline: true });
 
     public static T?[] GetAllUser<T>() where T : User => Server.GetClients().Where(c => c.Value.User is { IsOnline: true }).Select(c => c.Value.User as T).ToArray();
-    public static ClientDic[] GetAllClients() => Server.GetClients().Where(c => c.Value.User is { IsOnline: true }).Select(c => c.Value).ToArray();
+    public static ClientData[] GetAllClients() => Server.GetClients().Where(c => c.Value.User is { IsOnline: true }).Select(c => c.Value).ToArray();
 
     /// <summary>
     /// search for a connected user with 'Sender'.

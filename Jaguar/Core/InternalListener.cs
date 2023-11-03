@@ -18,7 +18,7 @@ internal class JoinToServerListener : UnRegisteredUserListener<string>
         if (string.IsNullOrEmpty(senderKey)) return;
         if (!clients.Values.Any(c => c.Client.ConvertToKey().Equals(senderKey)))
         {
-            using var clientDic = new ClientDic(null, sender);
+            using var clientDic = new ClientData(null, sender);
             Server.AddClient(senderKey, clientDic);
 
             _ = Task.Run(() =>
@@ -96,7 +96,7 @@ internal class PacketReceivedCallbackListener : UnRegisteredUserListener<uint>
 //         if (string.IsNullOrEmpty(senderKey)) return;
 //         if (!clients.Values.Any(c => c.Client.ConvertToKey().Equals(senderKey)))
 //         {
-//             using var clientDic = new ClientDic(null, sender);
+//             using var clientDic = new ClientData(null, sender);
 //             Server.AddClient(senderKey, clientDic);
 //
 //             Task.Run(() =>
