@@ -5,8 +5,8 @@ using System.Reflection;
 using System.Text;
 using Jaguar.Core.Socket;
 using Jaguar.Extensions;
+using Jaguar.Listeners;
 using Jaguar.Manager;
-using Jaguar.New;
 using Microsoft.Extensions.Logging;
 
 namespace Jaguar.Core;
@@ -142,6 +142,54 @@ public class Server
                 @object = instance,
                 // ListenersManager = (ListenersManager) Activator.CreateInstance(listener)!,
                 SenderType = typeof(IPEndPoint)
+            };
+            AddListener(name, jaguarTask);
+        }
+
+        #endregion
+       
+        #region Registered user listener
+
+        var registeredUserListeners = from x in assembly.GetTypes()
+            let y = x.BaseType
+            where !x.IsAbstract && !x.IsInterface &&
+                  y is {IsGenericType: true} &&
+                  y.GetGenericTypeDefinition() == typeof(RegisteredUserListener<,>)
+            select x;
+
+        foreach (var listener in registeredUserListeners)
+        {
+            var genericArguments = listener.BaseType?.GetGenericArguments();
+            if (genericArguments == null || genericArguments.Length == 0) continue;
+            var genericArgument1 = genericArguments[0];
+            var genericArgument2 = genericArguments[1];
+            var methodInfo = listener.GetMethod("OnMessageReceived");
+            if (methodInfo == null) continue;
+
+            var instance = Activator.CreateInstance(listener);
+            listener.GetMethod("Config")?.Invoke(instance, Array.Empty<object>());
+
+
+            // Get the property info
+            var propertyInfo = instance.GetType().GetProperty("Name");
+
+            // Get the value of the property from the instance
+            var name = (string) propertyInfo.GetValue(instance);
+
+            // Check listener name
+            if (string.IsNullOrEmpty(name))
+            {
+                throw new InvalidDataException($"Listener name is null or empty. Listener: {listener.FullName}");
+            }
+
+            // var parameters = methodInfo.GetParameters();
+
+            var jaguarTask = new JaguarTask
+            {
+                FunctionType = genericArgument2,
+                Method = methodInfo,
+                @object = instance,
+                SenderType = genericArgument1
             };
             AddListener(name, jaguarTask);
         }

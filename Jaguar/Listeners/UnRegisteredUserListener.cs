@@ -1,6 +1,6 @@
-﻿using System.Net;
+using System.Net;
 
-namespace Jaguar.New;
+namespace Jaguar.Listeners;
 
 public abstract class UnRegisteredUserListener<TData>
 {
