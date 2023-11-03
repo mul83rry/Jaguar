@@ -1,6 +1,6 @@
 ﻿using System.Net;
 
-namespace Jaguar.Core.Data;
+namespace Jaguar.Core.Dto;
 
 internal class PacketInQueue
 {

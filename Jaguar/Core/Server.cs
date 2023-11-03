@@ -6,6 +6,7 @@ using System.Text;
 using Jaguar.Core.Socket;
 using Jaguar.Extensions;
 using Jaguar.Manager;
+using Jaguar.New;
 using Microsoft.Extensions.Logging;
 
 namespace Jaguar.Core;
@@ -15,6 +16,7 @@ public class JaguarTask
     public Type? FunctionType { get; init; }
     public MethodInfo? Method;
     public ListenersManager? ListenersManager;
+    public Object? Class;
     public Type? SenderType;
 }
 
@@ -69,9 +71,55 @@ public class Server
         Logger = logger;
     }
 
+    public static void AddListenerNew(Assembly assembly)
+    {
+        var unRegisteredUserListeners = from x in assembly.GetTypes()
+            let y = x.BaseType
+            where !x.IsAbstract && !x.IsInterface &&
+                  y is {IsGenericType: true} &&
+                  y.GetGenericTypeDefinition() == typeof(UnRegisteredUserListener<>)
+            select x;
+
+        foreach (var listener in unRegisteredUserListeners)
+        {
+            var genericArguments = listener.BaseType?.GetGenericArguments();
+            if (genericArguments == null || genericArguments.Length == 0) continue;
+            var genericArgument = genericArguments[0];
+            var methodInfo = listener.GetMethod("OnMessageReceived");
+            if (methodInfo == null) continue;
+
+            var instance = Activator.CreateInstance(listener);
+            listener.GetMethod("Config")?.Invoke(instance, Array.Empty<object>());
+
+
+            
+            // Get the property info
+            var propertyInfo = instance.GetType().GetProperty("Name");
+
+            // Get the value of the property from the instance
+            var name = (string) propertyInfo.GetValue(instance);
+            
+            // Check listener name
+            if (string.IsNullOrEmpty(name))
+            {
+                throw new InvalidDataException($"Listener name is null or empty. Listener: {listener.FullName}");
+            }
+
+            var jaguarTask = new JaguarTask
+            {
+                FunctionType = genericArgument,
+                Method = methodInfo,
+                Class = instance,
+                // ListenersManager = (ListenersManager) Activator.CreateInstance(listener)!,
+                SenderType = typeof(IPEndPoint)
+            };
+            AddListener(name, jaguarTask);
+        }
+    }
+
     public static void AddListener<T>() where T : ListenersManager
     {
-        _ = (T)Activator.CreateInstance(typeof(T), Array.Empty<object>())!;
+        _ = (T) Activator.CreateInstance(typeof(T), Array.Empty<object>())!;
     }
 
     /// <summary>
@@ -147,12 +195,12 @@ public class Server
             usr.PacketSender.SendPacket(eventName, message);
     }
 
-    public static void SendReliable(IPEndPoint client, string eventName, object message, Action<uint>? onPacketsArrived = null)
+    public static void SendReliable(IPEndPoint client, string eventName, object message,
+        Action<uint>? onPacketsArrived = null)
     {
         //if (Clients.ContainsKey(client.ConvertToKey()))
         if (Clients.TryGetValue(client.ConvertToKey(), out var usr))
             usr.PacketSender.SendReliablePacket(eventName, message, onPacketsArrived);
-
     }
 
     internal static void UpdateClient(User? user, IPEndPoint? sender)

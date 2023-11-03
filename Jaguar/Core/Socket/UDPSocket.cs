@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Net.Sockets;
-using Jaguar.Core.Data;
+using Jaguar.Core.Dto;
+using Jaguar.Core.Handlers;
 using Jaguar.Extensions;
 using Jaguar.Manager;
 using Microsoft.Extensions.Logging;
@@ -327,7 +328,7 @@ internal static class UdpSocket
         //     }
         // });
 
-        Processor.Listener.OnMessageReceived += (sender, packet) =>
+        Listener.OnMessageReceived += (sender, packet) =>
         {
             var clients = Server.GetClients();
 
@@ -401,16 +402,19 @@ internal static class UdpSocket
                     if (packet.Message != null)
                     {
                         Console.WriteLine($"{packet.EventName} - {packet.Message}");
+                        var data = JsonConverter.Deserialize(packet.Message,
+                            type1);
+                        var parameters = type1 == typeof(string)
+                            ? new[] {convertedSender, packet.Message}
+                            : new[]
+                            {
+                                convertedSender,
+                                data
+                            };
+
                         Server.ListenersDic[packet.EventName].Method?.Invoke(
-                            Server.ListenersDic[packet.EventName].ListenersManager
-                            , type1 == typeof(string)
-                                ? new[] {convertedSender, packet.Message}
-                                : new[]
-                                {
-                                    convertedSender,
-                                    JsonConverter.Deserialize(packet.Message,
-                                        type1)
-                                });
+                            Server.ListenersDic[packet.EventName].Class
+                            , parameters);
                     }
                 }
                 catch (Exception e)

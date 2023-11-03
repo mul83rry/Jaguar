@@ -23,6 +23,7 @@
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.1" />
 	</ItemGroup>
 
+
 	<PropertyGroup>
 		<VersionPrefix Condition=" '$(VersionPrefix)' == '' ">1.1.0</VersionPrefix>
 	</PropertyGroup>

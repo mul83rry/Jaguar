@@ -1,7 +1,7 @@
 ﻿using System.Net;
-using Jaguar.Core.Data;
+using Jaguar.Core.Dto;
 
-namespace Jaguar.Core.Processor;
+namespace Jaguar.Core.Handlers;
 
 internal static class Listener
 {

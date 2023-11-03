@@ -2,17 +2,19 @@
 using Jaguar.Attributes;
 using Jaguar.Core;
 using static Jaguar.Core.Server;
+using JsonConverter = System.Text.Json.JsonSerializer;
 
 namespace Jaguar.Manager;
 
 public abstract class ListenersManager
 {
     internal static List<ListenersManager> Managers = new();
-    private readonly string[] _reservedEventsName = { "JTS", "PRC", "IA", "UDPBYTES" };
+    private readonly string[] _reservedEventsName = {"JTS", "PRC", "IA", "UDPBYTES"};
 
 
     public virtual Task OnBytesReceived(IPEndPoint endPoint, byte[] data)
     {
+        Console.WriteLine(JsonConverter.Serialize(data));
         return Task.CompletedTask;
     }
 
@@ -79,7 +81,7 @@ public abstract class ListenersManager
 
                 var eventName = !string.IsNullOrEmpty(listener.Name) ? listener.Name : method.Name;
                 var parameters = method.GetParameters();
-                    
+
                 var task = new JaguarTask
                 {
                     FunctionType = parameters[1].ParameterType,

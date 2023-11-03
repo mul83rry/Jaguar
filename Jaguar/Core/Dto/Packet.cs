@@ -2,7 +2,7 @@
 using System.Text;
 using System.Text.Json.Serialization;
 
-namespace Jaguar.Core.Data;
+namespace Jaguar.Core.Dto;
 
 public struct Packet
 {

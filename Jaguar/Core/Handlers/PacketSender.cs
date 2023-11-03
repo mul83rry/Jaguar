@@ -1,12 +1,12 @@
 ﻿using System.Collections.Concurrent;
 using System.Net;
-using Jaguar.Core.Data;
+using Jaguar.Core.Dto;
 using Jaguar.Core.Socket;
 using Jaguar.Extensions;
 using Microsoft.Extensions.Logging;
 using JsonConverter = System.Text.Json.JsonSerializer;
 
-namespace Jaguar.Core.Processor;
+namespace Jaguar.Core.Handlers;
 
 internal class PacketSender
 {
