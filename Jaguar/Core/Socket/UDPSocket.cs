@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using Jaguar.Core.Dto;
 using Jaguar.Core.Handlers;
 using Jaguar.Extensions;
@@ -132,7 +133,7 @@ internal static class UdpSocket
     public static void Start()
     {
         _continueWhile = false;
-        _ = new InternalListener();
+        Server.AddListenerNew(Assembly.GetExecutingAssembly());
 
         _listener = new UdpListener(Server.Ip, Server.Port);
 
@@ -172,11 +173,13 @@ internal static class UdpSocket
                     {
                         if (received.Packet.Sender != null)
                         {
-                            foreach (var manager in ListenersManager.Managers)
-                            {
-                                _ = manager.OnBytesReceived(received.Packet.Sender,
-                                    received.BytesArray);
-                            }
+                            IByteListener.Instance?.OnMessageReceived(received.Packet.Sender,
+                                received.BytesArray);
+                            // foreach (var manager in ListenersManager.Managers)
+                            // {
+                            //     _ = manager.OnBytesReceived(received.Packet.Sender,
+                            //         received.BytesArray);
+                            // }
                         }
 
                         continue;
@@ -208,7 +211,7 @@ internal static class UdpSocket
                             if (!received.Packet.Reliable)
                             {
                                 normalTask.Method?.Invoke(
-                                    normalTask.ListenersManager
+                                    normalTask.@object
                                     , new[] {convertedSender, received.Packet.Message});
                             }
                             else
@@ -249,7 +252,7 @@ internal static class UdpSocket
 
                                 var data = JsonConverter.Deserialize(received.Packet.Message, type);
                                 normalTask.Method?.Invoke(
-                                    normalTask.ListenersManager
+                                    normalTask.@object
                                     , new[] {convertedSender, data});
                             }
                             else
@@ -361,7 +364,7 @@ internal static class UdpSocket
                         if (type == null) return;
 
                         var result = Server.CallBackListenersDic[packet.EventName].Method?.Invoke(
-                            Server.CallBackListenersDic[packet.EventName].ListenersManager
+                            Server.CallBackListenersDic[packet.EventName].@object
                             , type == typeof(string)
                                 ? new[] {convertedSender, packet.Message}
                                 : new[] {convertedSender, JsonConverter.Deserialize(packet.Message, type)});
@@ -413,7 +416,7 @@ internal static class UdpSocket
                             };
 
                         Server.ListenersDic[packet.EventName].Method?.Invoke(
-                            Server.ListenersDic[packet.EventName].Class
+                            Server.ListenersDic[packet.EventName].@object
                             , parameters);
                     }
                 }

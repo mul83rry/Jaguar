@@ -15,8 +15,7 @@ public class JaguarTask
 {
     public Type? FunctionType { get; init; }
     public MethodInfo? Method;
-    public ListenersManager? ListenersManager;
-    public Object? Class;
+    public Object? @object;
     public Type? SenderType;
 }
 
@@ -73,6 +72,38 @@ public class Server
 
     public static void AddListenerNew(Assembly assembly)
     {
+        #region Byte listener
+
+        // Get all types in the assembly
+        var types = assembly.GetTypes();
+
+        // Filter the types to only include those that implement IByteListener
+        var byteListeners = types.Where(t => t.GetInterfaces().Contains(typeof(IByteListener)));
+        
+        // var byteListeners = from x in assembly.GetTypes()
+        //     let y = x.BaseType
+        //     where y == typeof(IByteListener)
+        //     select x;
+
+        foreach (var listener in byteListeners)
+        {
+            var methodInfo = listener.GetMethod("OnMessageReceived");
+            if (methodInfo == null) continue;
+
+            var instance = Activator.CreateInstance(listener);
+            listener.GetMethod("Config")?.Invoke(instance, Array.Empty<object>());
+
+            // Check listener Instance
+            if (IByteListener.Instance is null)
+            {
+                throw new InvalidDataException($"IByteListener.Instance is null");
+            }
+        }
+
+        #endregion
+
+        #region UnRegistered user listener
+
         var unRegisteredUserListeners = from x in assembly.GetTypes()
             let y = x.BaseType
             where !x.IsAbstract && !x.IsInterface &&
@@ -92,13 +123,12 @@ public class Server
             listener.GetMethod("Config")?.Invoke(instance, Array.Empty<object>());
 
 
-            
             // Get the property info
             var propertyInfo = instance.GetType().GetProperty("Name");
 
             // Get the value of the property from the instance
             var name = (string) propertyInfo.GetValue(instance);
-            
+
             // Check listener name
             if (string.IsNullOrEmpty(name))
             {
@@ -109,17 +139,14 @@ public class Server
             {
                 FunctionType = genericArgument,
                 Method = methodInfo,
-                Class = instance,
+                @object = instance,
                 // ListenersManager = (ListenersManager) Activator.CreateInstance(listener)!,
                 SenderType = typeof(IPEndPoint)
             };
             AddListener(name, jaguarTask);
         }
-    }
 
-    public static void AddListener<T>() where T : ListenersManager
-    {
-        _ = (T) Activator.CreateInstance(typeof(T), Array.Empty<object>())!;
+        #endregion
     }
 
     /// <summary>
