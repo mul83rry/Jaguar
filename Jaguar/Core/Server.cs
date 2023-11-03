@@ -13,7 +13,8 @@ namespace Jaguar.Core;
 
 public class JaguarTask
 {
-    public Type? FunctionType { get; init; }
+    public Type? RequestType { get; init; }
+    public Type? ResponseType { get; init; }
     public MethodInfo? Method;
     public Object? @object;
     public Type? SenderType;
@@ -79,7 +80,7 @@ public class Server
 
         // Filter the types to only include those that implement IByteListener
         var byteListeners = types.Where(t => t.GetInterfaces().Contains(typeof(IByteListener)));
-        
+
         // var byteListeners = from x in assembly.GetTypes()
         //     let y = x.BaseType
         //     where y == typeof(IByteListener)
@@ -137,7 +138,7 @@ public class Server
 
             var jaguarTask = new JaguarTask
             {
-                FunctionType = genericArgument,
+                RequestType = genericArgument,
                 Method = methodInfo,
                 @object = instance,
                 // ListenersManager = (ListenersManager) Activator.CreateInstance(listener)!,
@@ -147,28 +148,33 @@ public class Server
         }
 
         #endregion
-       
+
         #region Registered user listener
 
         var registeredUserListeners = from x in assembly.GetTypes()
             let y = x.BaseType
             where !x.IsAbstract && !x.IsInterface &&
                   y is {IsGenericType: true} &&
-                  y.GetGenericTypeDefinition() == typeof(RegisteredUserListener<,>)
+                  (
+                      y.GetGenericTypeDefinition() == typeof(RegisteredUserListener<,>)
+                      || y.GetGenericTypeDefinition() == typeof(RegisteredUserListener<,,>)
+                  )
             select x;
 
         foreach (var listener in registeredUserListeners)
         {
             var genericArguments = listener.BaseType?.GetGenericArguments();
             if (genericArguments == null || genericArguments.Length == 0) continue;
-            var genericArgument1 = genericArguments[0];
-            var genericArgument2 = genericArguments[1];
+
             var methodInfo = listener.GetMethod("OnMessageReceived");
             if (methodInfo == null) continue;
 
+            var genericArgument0 = genericArguments[0];
+            var genericArgument1 = genericArguments[1];
+
+
             var instance = Activator.CreateInstance(listener);
             listener.GetMethod("Config")?.Invoke(instance, Array.Empty<object>());
-
 
             // Get the property info
             var propertyInfo = instance.GetType().GetProperty("Name");
@@ -182,16 +188,34 @@ public class Server
                 throw new InvalidDataException($"Listener name is null or empty. Listener: {listener.FullName}");
             }
 
-            // var parameters = methodInfo.GetParameters();
 
-            var jaguarTask = new JaguarTask
+            // Callback listener
+            if (genericArguments.Length == 3)
             {
-                FunctionType = genericArgument2,
-                Method = methodInfo,
-                @object = instance,
-                SenderType = genericArgument1
-            };
-            AddListener(name, jaguarTask);
+                var genericArgument2 = genericArguments[2];
+
+                var jaguarTask = new JaguarTask
+                {
+                    RequestType = genericArgument1,
+                    ResponseType = genericArgument2,
+                    Method = methodInfo,
+                    @object = instance,
+                    SenderType = genericArgument0
+                };
+
+                AddAsyncListener(name, jaguarTask);
+            }
+            else
+            {
+                var jaguarTask = new JaguarTask
+                {
+                    RequestType = genericArgument1,
+                    Method = methodInfo,
+                    @object = instance,
+                    SenderType = genericArgument0
+                };
+                AddListener(name, jaguarTask);
+            }
         }
 
         #endregion

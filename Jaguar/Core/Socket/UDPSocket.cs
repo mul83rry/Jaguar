@@ -206,7 +206,7 @@ internal static class UdpSocket
                             }
                         }
 
-                        if (normalTask.FunctionType == typeof(string))
+                        if (normalTask.RequestType == typeof(string))
                         {
                             if (!received.Packet.Reliable)
                             {
@@ -243,7 +243,7 @@ internal static class UdpSocket
                                     continue;
                                 }
 
-                                var type = normalTask.FunctionType;
+                                var type = normalTask.RequestType;
                                 if (type == null)
                                 {
                                     Server.Logger?.Log(LogLevel.Error, $"Jaguar: invalid listener type");
@@ -275,7 +275,7 @@ internal static class UdpSocket
                     else if (Server.CallBackListenersDic.TryGetValue(received.Packet.EventName,
                                  out var callbackTask))
                     {
-                        if (callbackTask.FunctionType == typeof(string))
+                        if (callbackTask.RequestType == typeof(string))
                         {
                             if (!clients.TryGetValue(received.Packet.Sender.ConvertToKey(), out var client))
                                 continue;
@@ -331,7 +331,7 @@ internal static class UdpSocket
         //     }
         // });
 
-        Listener.OnMessageReceived += (sender, packet) =>
+        Listener.OnMessageReceived += async (sender, packet) =>
         {
             var clients = Server.GetClients();
 
@@ -360,20 +360,40 @@ internal static class UdpSocket
                     if (packet.Message == null) return;
 
                     {
-                        var type = Server.CallBackListenersDic[packet.EventName].FunctionType;
+                        var type = Server.CallBackListenersDic[packet.EventName].RequestType;
                         if (type == null) return;
 
-                        var result = Server.CallBackListenersDic[packet.EventName].Method?.Invoke(
-                            Server.CallBackListenersDic[packet.EventName].@object
-                            , type == typeof(string)
-                                ? new[] {convertedSender, packet.Message}
-                                : new[] {convertedSender, JsonConverter.Deserialize(packet.Message, type)});
+                        var data = type == typeof(string)
+                            ? new[] {convertedSender, packet.Message}
+                            : new[] {convertedSender, JsonConverter.Deserialize(packet.Message, type)};
+
+                        var methodInfo = Server.CallBackListenersDic[packet.EventName].Method
+                                         ?? throw new NullReferenceException(
+                                             $"The method of {packet.EventName} is null");
+                        var listenerInstance = Server.CallBackListenersDic[packet.EventName].@object
+                                               ?? throw new NullReferenceException(
+                                                   $"The @Object of {packet.EventName} is null");
+
+                        // Invoke the method and get the response
+                        dynamic responseTask =
+                            methodInfo.Invoke(listenerInstance, data) ?? throw new NullReferenceException($"{packet.EventName}");
+
+                        // If the method is async and you want to await the response
+                        if (responseTask is not Task task) return;
+                        await task.ConfigureAwait(false);
+                        var resultProperty = task.GetType().GetProperty("Result");
+
+                        if (resultProperty == null)
+                        {
+                            throw new NullReferenceException($"resultProperty is null");
+                        }
+                        dynamic finalResponse = resultProperty.GetValue(task) ?? throw new InvalidOperationException();
 
                         if (!clients.ContainsKey(sender.ConvertToKey())) return;
-                        if (result != null)
+                        if (finalResponse != null)
                         {
                             Server.GetClients()[sender.ConvertToKey()]!.PacketSender
-                                .SendReliablePacket(packet.EventName, result, packet.SignIndex);
+                                .SendReliablePacket(packet.EventName, finalResponse, packet.SignIndex);
                         }
                     }
                 }
@@ -400,7 +420,7 @@ internal static class UdpSocket
                         if (convertedSender == null) return;
                     }
 
-                    var type1 = Server.ListenersDic[packet.EventName].FunctionType;
+                    var type1 = Server.ListenersDic[packet.EventName].RequestType;
                     if (type1 == null) return;
                     if (packet.Message != null)
                     {
