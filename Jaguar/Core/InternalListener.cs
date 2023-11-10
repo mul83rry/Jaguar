@@ -11,7 +11,7 @@ internal class JoinToServerListener : UnRegisteredUserListener<string>
         Name = "JTS";
     }
 
-    public override async Task OnMessageReceived(IPEndPoint sender, string data)
+    public override async Task OnMessageReceived(IPEndPoint sender, string request)
     {
         var clients = Server.GetClients();
         var senderKey = sender.ConvertToKey();
@@ -53,7 +53,7 @@ internal class PacketReceivedCallbackListener : UnRegisteredUserListener<uint>
         Name = "PRC"; // packet received callback
     }
 
-    public override Task OnMessageReceived(IPEndPoint sender, uint data)
+    public override Task OnMessageReceived(IPEndPoint sender, uint request)
     {
         var clients = Server.GetClients();
 
@@ -62,7 +62,7 @@ internal class PacketReceivedCallbackListener : UnRegisteredUserListener<uint>
 
         if (!clients.ContainsKey(sender.ConvertToKey())) return Task.CompletedTask;
         var udpClient = clients[sender.ConvertToKey()];
-        udpClient.PacketSender.PacketReceivedCallBack(data);
+        udpClient.PacketSender.PacketReceivedCallBack(request);
 
         return Task.CompletedTask;
     }

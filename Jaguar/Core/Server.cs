@@ -71,7 +71,7 @@ public class Server
         Logger = logger;
     }
 
-    public static void AddListenerNew(Assembly assembly)
+    public static void AddListeners(Assembly assembly)
     {
         #region Byte listener
 

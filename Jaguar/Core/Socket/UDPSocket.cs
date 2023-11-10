@@ -86,7 +86,7 @@ internal static class UdpSocket
                 // byte[] data
                 return new Received(
                         ByteListenerKey, sender: result.RemoteEndPoint)
-                    {BytesArray = buffer};
+                { BytesArray = buffer };
             }
             catch (Exception ex)
             {
@@ -113,11 +113,11 @@ internal static class UdpSocket
             Client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
             //Client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
 
-            const int iocIn = unchecked((int) 0x80000000);
+            const int iocIn = unchecked((int)0x80000000);
             const int iocVendor = 0x18000000;
             const int sioUdpConnReset = iocIn | iocVendor | 12;
 
-            byte[] optionInValue = {Convert.ToByte(false)};
+            byte[] optionInValue = { Convert.ToByte(false) };
             var optionOutValue = new byte[4];
             //Client.Client.IOControl(sioUdpConnReset, optionInValue, optionOutValue);
         }
@@ -133,7 +133,7 @@ internal static class UdpSocket
     public static void Start()
     {
         _continueWhile = false;
-        Server.AddListenerNew(Assembly.GetExecutingAssembly());
+        Server.AddListeners(Assembly.GetExecutingAssembly());
 
         _listener = new UdpListener(Server.Ip, Server.Port);
 
@@ -212,7 +212,7 @@ internal static class UdpSocket
                             {
                                 normalTask.Method?.Invoke(
                                     normalTask.@object
-                                    , new[] {convertedSender, received.Packet.Message});
+                                    , new[] { convertedSender, received.Packet.Message });
                             }
                             else
                             {
@@ -253,7 +253,7 @@ internal static class UdpSocket
                                 var data = JsonConverter.Deserialize(received.Packet.Message, type);
                                 normalTask.Method?.Invoke(
                                     normalTask.@object
-                                    , new[] {convertedSender, data});
+                                    , new[] { convertedSender, data });
                             }
                             else
                             {
@@ -364,8 +364,8 @@ internal static class UdpSocket
                         if (type == null) return;
 
                         var data = type == typeof(string)
-                            ? new[] {convertedSender, packet.Message}
-                            : new[] {convertedSender, JsonConverter.Deserialize(packet.Message, type)};
+                            ? new[] { convertedSender, packet.Message }
+                            : new[] { convertedSender, JsonConverter.Deserialize(packet.Message, type) };
 
                         var methodInfo = Server.CallBackListenersDic[packet.EventName].Method
                                          ?? throw new NullReferenceException(
@@ -425,10 +425,15 @@ internal static class UdpSocket
                     if (packet.Message != null)
                     {
                         Console.WriteLine($"{packet.EventName} - {packet.Message}");
-                        var data = JsonConverter.Deserialize(packet.Message,
-                            type1);
+                        object? data = null;
+
+                        if (type1 != typeof(string))
+                        {
+                            data = JsonConverter.Deserialize(packet.Message,
+                                type1);
+                        }
                         var parameters = type1 == typeof(string)
-                            ? new[] {convertedSender, packet.Message}
+                            ? new[] { convertedSender, packet.Message }
                             : new[]
                             {
                                 convertedSender,
