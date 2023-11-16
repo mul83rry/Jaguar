@@ -1,4 +1,6 @@
 ﻿using System.Net;
+using System.Net.WebSockets;
+using System.Numerics;
 using Jaguar.Core;
 using Jaguar.Extensions;
 
@@ -19,20 +21,17 @@ public static class UsersManager
     /// </summary>
     /// <param name="client">Sender of user.</param>
     /// <returns>return search for a connected user with Sender.</returns>
-    public static User? FindUser(IPEndPoint? client)
+    public static User? FindUser(BigInteger? client)
     {
         if (client == null) return null;
         var clients = Server.GetClients();
 
-        clients.TryGetValue(client.ConvertToKey(), out var clientDic);
+        clients.TryGetValue(client.Value, out var clientDic);
 
         return clientDic?.User;
-        // return !clients.ContainsKey(client.ConvertToKey())
-        //     ? null
-        //     : clients[client.ConvertToKey()].User;
     }
 
-    public static bool AnyUser(IPEndPoint client) => Server.GetClients().ContainsKey(client.ConvertToKey());
+    // public static bool AnyUser(IPEndPoint client) => Server.GetClients().ContainsKey(client.ConvertToKey());
 
     /// <summary>
     /// search for a connected user with 'UniqueId'.
