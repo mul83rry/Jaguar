@@ -2,6 +2,7 @@
 using System.Net;
 using System.Net.WebSockets;
 using Jaguar.Core;
+using Jaguar.Core.Socket;
 using Jaguar.Enums;
 
 namespace Jaguar.Manager;
@@ -110,7 +111,7 @@ public static class RoomManager
         return false;
     }
 
-    public static bool ReJoin(long uniqueId, WebSocketContext client, out User? user)
+    public static bool ReJoin(long uniqueId, WebSocketContextData client, out User? user)
     {
         var room = GetRooms<Room>().LastOrDefault(r => r.Users.Any(u => u != null && u.UniqueId == uniqueId));
         if (room == null)

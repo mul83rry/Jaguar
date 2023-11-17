@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Net.WebSockets;
 using System.Numerics;
+using Jaguar.Core.Socket;
 using Jaguar.Extensions;
 
 namespace Jaguar.Core;
@@ -15,13 +16,13 @@ public abstract class User
     /// <summary>
     /// it return current room witch user joined.
     /// </summary>
-    [NonSerialized] internal WebSocketContext? Client;
+    [NonSerialized] internal WebSocketContextData? Client;
 
     public BigInteger SocketId { get; set; }
     
     //public bool InRoom { get; internal set; }
 
-    public WebSocketContext SocketContext { get; set; }
+    // public WebSocketContext SocketContext { get; set; }
     
     public bool IsOnline { get; internal set; }
 
@@ -71,16 +72,16 @@ public abstract class User
     /// there is two kind of constructor for user.
     /// this constructor is for real users, witch needs Sender variable as an argument
     /// </summary>
-    protected User(WebSocketContext? ipEndPoint)
+    protected User(WebSocketContextData? client)
     {
-        if (ipEndPoint == null)
+        if (client == null)
             throw new NullReferenceException("Sender can not be null");
 
-        Server.UpdateClient(this, ipEndPoint);
+        Server.UpdateClient(this, client);
 
         UniqueId = Server.GenerateUniqueUserId();
         IsOnline = true;
-        Client = ipEndPoint;
+        Client = client;
     }
 
     #endregion constructor
@@ -167,7 +168,7 @@ public abstract class User
     /// this is for real users, witch get Sender variable for update.
     /// </summary>
     /// <param name="client">Sender of user</param>
-    public void UpdateClient(WebSocketContext? client)
+    public void UpdateClient(WebSocketContextData? client)
     {
         Server.UpdateClient(this, client);
         Client = client;

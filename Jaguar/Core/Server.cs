@@ -19,9 +19,10 @@ public class Server
 {
     public static Action<WebSocketContext>? OnNewClientJoined;
     public static Action<WebSocketContext>? OnClientExited;
-    public static Action<string, int>? OnServerStarted;
+    public static Action? OnServerStarted;
 
-    internal static readonly ConcurrentDictionary<string, JaguarTask> ListenersDic = new();
+    internal static readonly ConcurrentDictionary<string, JaguarTask> Listeners = new();
+    internal static readonly Dictionary<byte, string> ClientListeners = new();
 
     private static ImmutableList<long> _usersUniqueId = ImmutableList<long>.Empty;
 
@@ -33,21 +34,33 @@ public class Server
 
     public static Dictionary<BigInteger, ClientData?> GetClients() => new(Clients!);
 
-    public Server(string address, int port, ILogger _logger)
+    internal WebSocket WebSocket;
+    
+    public Server(string address, ILogger _logger)
     {
         if (string.IsNullOrEmpty(address) || string.IsNullOrWhiteSpace(address))
             throw new ArgumentNullException(nameof(address));
 
         _logger = Logger;
 
-        var uri = $"{address}:{port}";
-        var server = new Socket.WebSocket(address, port);
+        var uri = address;
+        WebSocket = new Socket.WebSocket(address, 1024);
     }
+
+    // 0: none,
+    // 1: join,
+    // 2: already used,
+    // 3: listenersSetting
+    public static Dictionary<string, byte> GetListenerNameMap()
+    {
+        var sequenceNumber = 4;
+        return Listeners.ToDictionary(i => i.Key,
+            _ => (byte) sequenceNumber++);
+    }
+
 
     public static void AddListeners(Assembly assembly)
     {
-        
-        
         #region UnRegistered user listener
 
         var unRegisteredUserListeners = from x in assembly.GetTypes()
@@ -87,7 +100,7 @@ public class Server
                 Method = methodInfo,
                 @object = instance,
                 // ListenersManager = (ListenersManager) Activator.CreateInstance(listener)!,
-                SenderType = typeof(IPEndPoint)
+                SenderType = typeof(WebSocketContextData)
             };
             AddListener(name, jaguarTask);
         }
@@ -184,7 +197,7 @@ public class Server
     /// <param name="jaguarTask">server invoke this event after eventName called.</param>
     internal static bool AddListener(string eventName, JaguarTask jaguarTask)
     {
-        return ListenersDic.TryAdd(eventName, jaguarTask);
+        return Listeners.TryAdd(eventName, jaguarTask);
     }
 
     public static void Send(User user, string eventName, object message)
@@ -195,17 +208,17 @@ public class Server
 
         Clients.TryGetValue(user.SocketId, out var client);
 
-        var packet = new Packet(eventName, message);
+        var packet = new Packet(user.Client, eventName, message);
         Socket.WebSocket.Send(client.Client, packet);
     }
 
-    public static void Send(WebSocketContext client, string eventName, object message)
+    public static void Send(WebSocketContextData client, string eventName, object message)
     {
-        var packet = new Packet(eventName, message);
-        Socket.WebSocket.Send(client, packet);
+        var packet = new Packet(client, eventName, message);
+        Socket.WebSocket.Send(client.SocketContext, packet);
     }
 
-    internal static void UpdateClient(User user, WebSocketContext? sender)
+    internal static void UpdateClient(User user, WebSocketContextData? sender)
     {
         user.Client = sender;
     }

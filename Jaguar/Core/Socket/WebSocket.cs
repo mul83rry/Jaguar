@@ -10,20 +10,20 @@ using Microsoft.Extensions.Logging;
 
 namespace Jaguar.Core.Socket;
 
+public class WebSocketContextData
+{
+    public WebSocketContext SocketContext { get; init; }
+    public User? User { get; set; }
+    public Dictionary<string, byte> SupportedListeners { get; internal set; }
+}
+
 internal class WebSocket
 {
     private static int _maxBufferSize;
     private static string _uri;
 
-    #region Constants
 
-    private const byte NoneEventId = 0;
-    private const byte JoinEventId = 1;
-    private const byte AlreadyUsedEventId = 2;
-
-    #endregion
-
-    private static Dictionary<BigInteger, WebSocketContext> _clients = new();
+    private static Dictionary<BigInteger, WebSocketContextData> _clients = new();
 
     // internal WebSocket(string uri = "http://localhost:5000/", int maxBufferSize = 1024)
     internal WebSocket(string uri, int maxBufferSize)
@@ -32,12 +32,12 @@ internal class WebSocket
         _maxBufferSize = maxBufferSize;
     }
 
-    internal static void Start()
+    internal void Start()
     {
         var listener = new HttpListener();
         listener.Prefixes.Add(_uri);
         listener.Start();
-        Console.WriteLine("Listening...");
+        Server.OnServerStarted?.Invoke();
 
         while (true)
         {
@@ -54,9 +54,10 @@ internal class WebSocket
         }
     }
 
-    private static async void ProcessRequest(HttpListenerContext listenerContext)
+    private async void ProcessRequest(HttpListenerContext listenerContext)
     {
         WebSocketContext? webSocketContext = null;
+
         try
         {
             webSocketContext = await listenerContext.AcceptWebSocketAsync(subProtocol: null);
@@ -76,15 +77,8 @@ internal class WebSocket
                 }
                 else
                 {
-                    // var message = Encoding.UTF8.GetString(receiveBuffer, 0, receiveResult.Count);
-                    // var sendBuffer = Encoding.UTF8.GetBytes("You sent: " + message);
-
-                    // manage received message
-                    Handle(webSocketContext, receiveBuffer);
-
-
-                    // await webSocketContext.WebSocket.SendAsync(new ArraySegment<byte>(sendBuffer),
-                    //     WebSocketMessageType.Text, endOfMessage: true, cancellationToken: CancellationToken.None);
+                    // handle received message
+                    _ = Handle(webSocketContext, receiveBuffer);
                 }
             }
         }
@@ -102,30 +96,68 @@ internal class WebSocket
     {
         var receivedPacket = new Packet(bytes);
 
-        if (receivedPacket.EventId == NoneEventId)
-        {
-            // Invalid packet
-            return;
-        }
-
         switch (receivedPacket)
         {
-            case {EventId: JoinEventId, Sender: not null}:
+            case {Sender: null}:
+            {
+                break;
+            }
+            case {EventId: EventIdConstants.NoneEventId}:
+            {
+                break;
+            }
+            case {EventId: EventIdConstants.ListenerNameMapEventId}:
+            {
+                if (_clients.TryGetValue(receivedPacket.Sender.Value, out var client))
+                {
+                    if (receivedPacket.Message == null)
+                    {
+                        break;
+                    }
+
+                    client.SupportedListeners =
+                        JsonSerializer.Deserialize<Dictionary<string, byte>>(receivedPacket.Message) ??
+                        new Dictionary<string, byte>();
+
+                    if (!client.SupportedListeners.Any())
+                    {
+                        Console.WriteLine("Invalid client listeners");
+                    }
+                    
+                    // Todo: temp
+
+                    #region Temp
+
+                    Server.Send(client, "Client First Listener", 123456);
+
+                    #endregion
+                }
+
+                break;
+            }
+            case {EventId: EventIdConstants.JoinEventId}:
             {
                 // new clients join
-                var isSuccess = _clients.TryAdd(receivedPacket.Sender.Value, webSocketContext);
+                var isSuccess = _clients.TryAdd(receivedPacket.Sender.Value,
+                    new WebSocketContextData
+                    {
+                        SocketContext = webSocketContext,
+                        SupportedListeners =new Dictionary<string, byte>(),
+                    });
                 if (!isSuccess) return;
 
-                var packet = new Packet(JoinEventId, "Successfully join");
-                Send(receivedPacket.Sender.Value, packet);
+                var listenersMapData = Server.GetListenerNameMap();
 
+                var packet = new Packet(EventIdConstants.ListenerNameMapEventId, listenersMapData);
+                Send(receivedPacket.Sender.Value, packet);
+                
                 Server.OnNewClientJoined?.Invoke(webSocketContext);
                 break;
             }
-            case {EventId: AlreadyUsedEventId, Sender: not null}:
+            case {EventId: EventIdConstants.AlreadyUsedEventId}:
             {
                 // already used
-                var packet = new Packet(AlreadyUsedEventId, "Already used");
+                var packet = new Packet(EventIdConstants.AlreadyUsedEventId, "Already used");
                 Send(receivedPacket.Sender.Value, packet);
                 break;
             }
@@ -142,61 +174,59 @@ internal class WebSocket
             return;
         }
 
-        var clients = Server.GetClients();
+        if (!_clients.TryGetValue(packet.Sender.Value, out var client))
+        {
+            Server.Logger?.Log(LogLevel.Warning, $"Jaguar: Client not found");
+            return;
+        }
 
-        var stringEventName = ""; // Todo: Get from hash list (packet.EventId)
+        var stringEventName = Server.GetListenerNameMap()
+            .FirstOrDefault(i => i.Value == packet.EventId).Key;
 
-        if (Server.ListenersDic.TryGetValue(stringEventName, out var normalTask))
+        if (string.IsNullOrEmpty(stringEventName))
+        {
+            Server.Logger?.Log(LogLevel.Warning, $"Jaguar: Event not found");
+            return;
+        }
+
+        if (Server.Listeners.TryGetValue(stringEventName, out var normalTask))
         {
             var data = JsonSerializer.Deserialize(packet.Message, normalTask.RequestType);
 
             object? convertedSender = packet.Sender;
-            if (normalTask.SenderType != typeof(WebSocketContext))
+            if (normalTask.SenderType != typeof(WebSocketContextData))
             {
-                if (normalTask.SenderType != null)
-                {
-                    convertedSender = Convert.ChangeType(
-                        UsersManager.FindUser(packet.Sender),
-                        normalTask.SenderType);
-                }
-
-                if (convertedSender == null)
+                if (client.User is null)
                 {
                     Server.Logger?.Log(LogLevel.Error, $"Jaguar: user not submit");
-                }
-
-                normalTask.Method?.Invoke(
-                    normalTask.@object
-                    , new[] {convertedSender, data});
-            }
-            else
-            {
-                if (!clients.TryGetValue(packet.Sender.Value, out var client))
-                {
-                    Server.Logger?.Log(LogLevel.Warning, $"Jaguar: Client not found");
                     return;
                 }
 
-                if (client is null)
-                {
-                    Server.Logger?.Log(LogLevel.Error, $"Client is null");
-                }
-
                 normalTask.Method?.Invoke(
                     normalTask.@object
-                    , new[] {client.Client, data});
+                    , new[] {client.User, data});
+            }
+            else
+            {
+                normalTask.Method?.Invoke(
+                    normalTask.@object
+                    , new[] {client, data});
             }
         }
     }
 
-    internal static void Send(BigInteger sender, Packet packet)
+    private static void Send(BigInteger sender, Packet packet)
     {
         if (!_clients.TryGetValue(sender, out var webSocketContext)) return;
 
         if (packet.Message == null) return;
 
-        var bytes = packet.Message.ToBytes();
-        webSocketContext.WebSocket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true,
+        var bytes = new[] {packet.EventId}
+            .Concat(packet.Message.ToBytes())
+            .Concat(new[] {Packet.SignEof})
+            .ToArray();
+        webSocketContext.SocketContext.WebSocket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Binary,
+            true,
             CancellationToken.None);
     }
 
@@ -204,8 +234,22 @@ internal class WebSocket
     {
         if (packet.Message == null) return;
 
-        var bytes = packet.Message.ToBytes();
-        sender.WebSocket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true,
+        var bytes = new[] {packet.EventId}
+            .Concat(packet.Message.ToBytes())
+            .Concat(new[] {Packet.SignEof})
+            .ToArray();
+        
+        // var bytes = packet.Message.ToBytes();
+        sender.WebSocket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Binary, true,
             CancellationToken.None);
+    }
+
+
+    public class EventIdConstants
+    {
+        public const byte NoneEventId = 0;
+        public const byte JoinEventId = 1;
+        public const byte AlreadyUsedEventId = 2;
+        public const byte ListenerNameMapEventId = 3;
     }
 }
