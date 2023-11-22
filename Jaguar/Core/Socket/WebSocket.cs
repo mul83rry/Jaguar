@@ -23,7 +23,8 @@ internal class WebSocket
     private static string _uri;
 
 
-    private static Dictionary<BigInteger, WebSocketContextData> _clients = new();
+    // Todo: manage disconnected clients
+    internal static readonly Dictionary<BigInteger, WebSocketContextData> Clients = new();
 
     // internal WebSocket(string uri = "http://localhost:5000/", int maxBufferSize = 1024)
     internal WebSocket(string uri, int maxBufferSize)
@@ -108,7 +109,7 @@ internal class WebSocket
             }
             case {EventId: EventIdConstants.ListenerNameMapEventId}:
             {
-                if (_clients.TryGetValue(receivedPacket.Sender.Value, out var client))
+                if (Clients.TryGetValue(receivedPacket.Sender.Value, out var client))
                 {
                     if (receivedPacket.Message == null)
                     {
@@ -123,7 +124,7 @@ internal class WebSocket
                     {
                         Console.WriteLine("Invalid client listeners");
                     }
-                    
+
                     // Todo: temp
 
                     #region Temp
@@ -138,11 +139,11 @@ internal class WebSocket
             case {EventId: EventIdConstants.JoinEventId}:
             {
                 // new clients join
-                var isSuccess = _clients.TryAdd(receivedPacket.Sender.Value,
+                var isSuccess = Clients.TryAdd(receivedPacket.Sender.Value,
                     new WebSocketContextData
                     {
                         SocketContext = webSocketContext,
-                        SupportedListeners =new Dictionary<string, byte>(),
+                        SupportedListeners = new Dictionary<string, byte>(),
                     });
                 if (!isSuccess) return;
 
@@ -150,7 +151,7 @@ internal class WebSocket
 
                 var packet = new Packet(EventIdConstants.ListenerNameMapEventId, listenersMapData);
                 Send(receivedPacket.Sender.Value, packet);
-                
+
                 Server.OnNewClientJoined?.Invoke(webSocketContext);
                 break;
             }
@@ -174,7 +175,7 @@ internal class WebSocket
             return;
         }
 
-        if (!_clients.TryGetValue(packet.Sender.Value, out var client))
+        if (!Clients.TryGetValue(packet.Sender.Value, out var client))
         {
             Server.Logger?.Log(LogLevel.Warning, $"Jaguar: Client not found");
             return;
@@ -217,7 +218,7 @@ internal class WebSocket
 
     private static void Send(BigInteger sender, Packet packet)
     {
-        if (!_clients.TryGetValue(sender, out var webSocketContext)) return;
+        if (!Clients.TryGetValue(sender, out var webSocketContext)) return;
 
         if (packet.Message == null) return;
 
@@ -238,8 +239,13 @@ internal class WebSocket
             .Concat(packet.Message.ToBytes())
             .Concat(new[] {Packet.SignEof})
             .ToArray();
+
+        if (Server.MaxBufferSize < bytes.Length)
+        {
+            Server.OnError?.Invoke($"Jaguar: MaxBufferSize is {Server.MaxBufferSize} but message size is {bytes.Length}");
+            return;
+        }
         
-        // var bytes = packet.Message.ToBytes();
         sender.WebSocket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Binary, true,
             CancellationToken.None);
     }

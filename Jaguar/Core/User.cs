@@ -1,8 +1,6 @@
-﻿using System.Net;
-using System.Net.WebSockets;
+﻿using System.Net.WebSockets;
 using System.Numerics;
 using Jaguar.Core.Socket;
-using Jaguar.Extensions;
 
 namespace Jaguar.Core;
 
@@ -16,10 +14,9 @@ public abstract class User
     /// <summary>
     /// it return current room witch user joined.
     /// </summary>
-    [NonSerialized] internal WebSocketContextData? Client;
-
-    public BigInteger SocketId { get; set; }
+    internal WebSocketContextData? Client;
     
+
     //public bool InRoom { get; internal set; }
 
     // public WebSocketContext SocketContext { get; set; }
@@ -56,6 +53,7 @@ public abstract class User
     /// unique id of user
     /// </summary>
     public long UniqueId { get; }
+
 
     #region constructor
 

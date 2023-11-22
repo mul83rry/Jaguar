@@ -19,7 +19,10 @@ public class Server
 {
     public static Action<WebSocketContext>? OnNewClientJoined;
     public static Action<WebSocketContext>? OnClientExited;
+    public static Action<string>? OnError;
     public static Action? OnServerStarted;
+    
+    public static int MaxBufferSize { get; set; } = 1024;
 
     internal static readonly ConcurrentDictionary<string, JaguarTask> Listeners = new();
     internal static readonly Dictionary<byte, string> ClientListeners = new();
@@ -27,12 +30,12 @@ public class Server
     private static ImmutableList<long> _usersUniqueId = ImmutableList<long>.Empty;
 
 
-    private static readonly ConcurrentDictionary<BigInteger, ClientData> Clients = new(); // socketId, clientData
+    // private static readonly ConcurrentDictionary<BigInteger, ClientData> Clients = new(); // socketId, clientData
 
     internal static ILogger? Logger;
 
 
-    public static Dictionary<BigInteger, ClientData?> GetClients() => new(Clients!);
+    // public static Dictionary<BigInteger, ClientData?> GetClients() => new(Clients!);
 
     internal WebSocket WebSocket;
     
@@ -44,7 +47,7 @@ public class Server
         _logger = Logger;
 
         var uri = address;
-        WebSocket = new Socket.WebSocket(address, 1024);
+        WebSocket = new Socket.WebSocket(address, MaxBufferSize);
     }
 
     // 0: none,
@@ -206,10 +209,9 @@ public class Server
         if (eventName == null) throw new ArgumentNullException(nameof(eventName));
         if (message == null) throw new ArgumentNullException(nameof(message));
 
-        Clients.TryGetValue(user.SocketId, out var client);
 
         var packet = new Packet(user.Client, eventName, message);
-        Socket.WebSocket.Send(client.Client, packet);
+        Socket.WebSocket.Send(user.Client.SocketContext, packet);
     }
 
     public static void Send(WebSocketContextData client, string eventName, object message)
@@ -240,15 +242,15 @@ public class Server
         return id;
     }
 
-    public static void RemoveClient(BigInteger clientKey)
-    {
-        Clients.TryRemove(clientKey, out _);
-    }
-
-    public static void AddClient(BigInteger senderKey, ClientData clientData)
-    {
-        Clients.TryAdd(senderKey, clientData);
-    }
+    // public static void RemoveClient(BigInteger clientKey)
+    // {
+    //     Clients.TryRemove(clientKey, out _);
+    // }
+    //
+    // public static void AddClient(BigInteger senderKey, ClientData clientData)
+    // {
+    //     Clients.TryAdd(senderKey, clientData);
+    // }
 
     public static void RemoveUsersUniqueId(long userUniqueId)
     {
