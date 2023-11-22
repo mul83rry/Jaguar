@@ -1,6 +1,5 @@
 ﻿using System.Numerics;
-using Jaguar.Core.Handlers;
-using Jaguar.Core.Socket;
+using Jaguar.Core.WebSocket;
 using Newtonsoft.Json;
 
 namespace Jaguar.Core.Dto;

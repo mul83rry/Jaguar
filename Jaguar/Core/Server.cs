@@ -1,17 +1,12 @@
 ﻿using System.Collections.Concurrent;
 using System.Collections.Immutable;
-using System.Net;
 using System.Net.WebSockets;
-using System.Numerics;
 using System.Reflection;
 using System.Text;
 using Jaguar.Core.Dto;
-using Jaguar.Core.Socket;
-using Jaguar.Extensions;
+using Jaguar.Core.WebSocket;
 using Jaguar.Listeners;
-using Jaguar.Manager;
 using Microsoft.Extensions.Logging;
-using WebSocket = Jaguar.Core.Socket.WebSocket;
 
 namespace Jaguar.Core;
 
@@ -37,7 +32,7 @@ public class Server
 
     // public static Dictionary<BigInteger, ClientData?> GetClients() => new(Clients!);
 
-    internal WebSocket WebSocket;
+    internal WebSocket.WebSocket WebSocket;
     
     public Server(string address, ILogger _logger)
     {
@@ -47,7 +42,7 @@ public class Server
         _logger = Logger;
 
         var uri = address;
-        WebSocket = new Socket.WebSocket(address, MaxBufferSize);
+        WebSocket = new WebSocket.WebSocket(address, MaxBufferSize);
     }
 
     // 0: none,
@@ -211,13 +206,13 @@ public class Server
 
 
         var packet = new Packet(user.Client, eventName, message);
-        Socket.WebSocket.Send(user.Client.SocketContext, packet);
+        Core.WebSocket.WebSocket.Send(user.Client.SocketContext, packet);
     }
 
     public static void Send(WebSocketContextData client, string eventName, object message)
     {
         var packet = new Packet(client, eventName, message);
-        Socket.WebSocket.Send(client.SocketContext, packet);
+        Core.WebSocket.WebSocket.Send(client.SocketContext, packet);
     }
 
     internal static void UpdateClient(User user, WebSocketContextData? sender)

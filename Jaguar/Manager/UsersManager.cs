@@ -1,9 +1,5 @@
-﻿using System.Net;
-using System.Net.WebSockets;
-using System.Numerics;
+﻿using System.Numerics;
 using Jaguar.Core;
-using Jaguar.Extensions;
-using WebSocket = Jaguar.Core.Socket.WebSocket;
 
 namespace Jaguar.Manager;
 
@@ -25,7 +21,7 @@ public static class UsersManager
     public static User? FindUser(BigInteger? client)
     {
         if (client == null) return null;
-        var clients = WebSocket.Clients;
+        var clients = Jaguar.Core.WebSocket.WebSocket.Clients;
 
         clients.TryGetValue(client.Value, out var clientDic);
 
@@ -39,5 +35,6 @@ public static class UsersManager
     /// </summary>
     /// <param name="id">unique id of user.</param>
     /// <returns>return search for a connected user with 'UniqueId'.</returns>
-    public static User? FindUser(long id) => WebSocket.Clients.Values.SingleOrDefault(c => c.User?.UniqueId == id)?.User;
+    public static User? FindUser(long id) => Jaguar.Core.WebSocket.WebSocket.Clients.Values
+        .SingleOrDefault(c => c.User?.UniqueId == id)?.User;
 }

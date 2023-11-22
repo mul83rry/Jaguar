@@ -1,7 +1,7 @@
 ﻿using System.Net.WebSockets;
 using Jaguar.Core.Dto;
 
-namespace Jaguar.Core.Handlers;
+namespace Jaguar.Core.Handler;
 
 internal static class Listener
 {

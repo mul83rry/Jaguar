@@ -1,5 +1,4 @@
-using System.Net.WebSockets;
-using Jaguar.Core.Socket;
+using Jaguar.Core.WebSocket;
 
 namespace Jaguar.Listeners;
 

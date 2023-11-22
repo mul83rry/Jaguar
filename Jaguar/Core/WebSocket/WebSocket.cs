@@ -1,21 +1,12 @@
-﻿using Jaguar.Core.Dto;
-using System.Net;
+﻿using System.Net;
 using System.Net.WebSockets;
 using System.Numerics;
 using System.Text.Json;
-using Jaguar.Core.Handlers;
+using Jaguar.Core.Dto;
 using Jaguar.Helpers;
-using Jaguar.Manager;
 using Microsoft.Extensions.Logging;
 
-namespace Jaguar.Core.Socket;
-
-public class WebSocketContextData
-{
-    public WebSocketContext SocketContext { get; init; }
-    public User? User { get; set; }
-    public Dictionary<string, byte> SupportedListeners { get; internal set; }
-}
+namespace Jaguar.Core.WebSocket;
 
 internal class WebSocket
 {
@@ -23,7 +14,6 @@ internal class WebSocket
     private static string _uri;
 
 
-    // Todo: manage disconnected clients
     internal static readonly Dictionary<BigInteger, WebSocketContextData> Clients = new();
 
     internal WebSocket(string uri, int maxBufferSize)

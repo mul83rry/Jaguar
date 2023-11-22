@@ -1,8 +1,6 @@
 ﻿using System.Collections.Immutable;
-using System.Net;
-using System.Net.WebSockets;
 using Jaguar.Core;
-using Jaguar.Core.Socket;
+using Jaguar.Core.WebSocket;
 using Jaguar.Enums;
 
 namespace Jaguar.Manager;
