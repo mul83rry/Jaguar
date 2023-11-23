@@ -215,10 +215,10 @@ public class Server
         Core.WebSocket.WebSocket.Send(client.SocketContext, packet);
     }
 
-    internal static void UpdateClient(User user, WebSocketContextData? sender)
-    {
-        user.Client = sender;
-    }
+    // internal static void UpdateClient(User user, WebSocketContextData? sender)
+    // {
+    //     user.Client = sender;
+    // }
 
     internal static long GenerateUniqueUserId()
     {

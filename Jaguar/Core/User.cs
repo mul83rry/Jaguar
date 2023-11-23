@@ -13,13 +13,11 @@ public abstract class User
     /// it return current room witch user joined.
     /// </summary>
     internal WebSocketContextData? Client;
-    
+
 
     //public bool InRoom { get; internal set; }
 
     // public WebSocketContext SocketContext { get; set; }
-    
-    public bool IsOnline { get; internal set; }
 
     // public DateTime LastActivateTime => Server.GetClients()[Client.ConvertToKey()]!.LastActivateTime;
 
@@ -73,11 +71,11 @@ public abstract class User
         if (client == null)
             throw new NullReferenceException("Sender can not be null");
 
-        Server.UpdateClient(this, client);
+        // Server.UpdateClient(this, client);
 
         UniqueId = Server.GenerateUniqueUserId();
-        IsOnline = true;
-        Client = client;
+        UpdateClient(client);
+        client.User = this;
     }
 
     #endregion constructor
@@ -166,7 +164,7 @@ public abstract class User
     /// <param name="client">Sender of user</param>
     public void UpdateClient(WebSocketContextData? client)
     {
-        Server.UpdateClient(this, client);
+        // Server.UpdateClient(this, client);
         Client = client;
     }
 
