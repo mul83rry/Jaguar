@@ -222,7 +222,7 @@ internal class WebSocket
         Send(webSocketContext.SocketContext, packet);
     }
 
-    internal static void Send(WebSocketContext sender, Packet packet)
+    internal static async void Send(WebSocketContext sender, Packet packet)
     {
         if (packet.Message == null)
         {
@@ -242,7 +242,7 @@ internal class WebSocket
             return;
         }
 
-        sender.WebSocket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Binary, true,
+        await sender.WebSocket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Binary, true,
             CancellationToken.None);
     }
 

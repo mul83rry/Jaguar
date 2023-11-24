@@ -16,7 +16,7 @@ public class Server
     public static Action<WebSocketContext>? OnClientExited;
     public static Action<string>? OnError;
     public static Action? OnServerStarted;
-    
+
     public static int MaxBufferSize { get; set; } = 1024;
 
     internal static readonly ConcurrentDictionary<string, JaguarTask> Listeners = new();
@@ -33,7 +33,7 @@ public class Server
     // public static Dictionary<BigInteger, ClientData?> GetClients() => new(Clients!);
 
     internal WebSocket.WebSocket WebSocket;
-    
+
     public Server(string address, ILogger _logger)
     {
         if (string.IsNullOrEmpty(address) || string.IsNullOrWhiteSpace(address))
@@ -53,7 +53,7 @@ public class Server
     {
         var sequenceNumber = 4;
         return Listeners.ToDictionary(i => i.Key,
-            _ => (byte) sequenceNumber++);
+            _ => (byte)sequenceNumber++);
     }
 
 
@@ -62,11 +62,11 @@ public class Server
         #region UnRegistered user listener
 
         var unRegisteredUserListeners = from x in assembly.GetTypes()
-            let y = x.BaseType
-            where !x.IsAbstract && !x.IsInterface &&
-                  y is {IsGenericType: true} &&
-                  y.GetGenericTypeDefinition() == typeof(UnRegisteredUserListener<>)
-            select x;
+                                        let y = x.BaseType
+                                        where !x.IsAbstract && !x.IsInterface &&
+                                              y is { IsGenericType: true } &&
+                                              y.GetGenericTypeDefinition() == typeof(UnRegisteredUserListener<>)
+                                        select x;
 
         foreach (var listener in unRegisteredUserListeners)
         {
@@ -84,7 +84,7 @@ public class Server
             var propertyInfo = instance.GetType().GetProperty("Name");
 
             // Get the value of the property from the instance
-            var name = (string) propertyInfo.GetValue(instance);
+            var name = (string)propertyInfo.GetValue(instance);
 
             // Check listener name
             if (string.IsNullOrEmpty(name))
@@ -108,14 +108,14 @@ public class Server
         #region Registered user listener
 
         var registeredUserListeners = from x in assembly.GetTypes()
-            let y = x.BaseType
-            where !x.IsAbstract && !x.IsInterface &&
-                  y is {IsGenericType: true} &&
-                  (
-                      y.GetGenericTypeDefinition() == typeof(RegisteredUserListener<,>)
-                      || y.GetGenericTypeDefinition() == typeof(RegisteredUserListener<,,>)
-                  )
-            select x;
+                                      let y = x.BaseType
+                                      where !x.IsAbstract && !x.IsInterface &&
+                                            y is { IsGenericType: true } &&
+                                            (
+                                                y.GetGenericTypeDefinition() == typeof(RegisteredUserListener<,>)
+                                                || y.GetGenericTypeDefinition() == typeof(RegisteredUserListener<,,>)
+                                            )
+                                      select x;
 
         foreach (var listener in registeredUserListeners)
         {
@@ -136,7 +136,7 @@ public class Server
             var propertyInfo = instance.GetType().GetProperty("Name");
 
             // Get the value of the property from the instance
-            var name = (string) propertyInfo.GetValue(instance);
+            var name = (string)propertyInfo.GetValue(instance);
 
             // Check listener name
             if (string.IsNullOrEmpty(name))
@@ -204,9 +204,11 @@ public class Server
         if (eventName == null) throw new ArgumentNullException(nameof(eventName));
         if (message == null) throw new ArgumentNullException(nameof(message));
 
-
-        var packet = new Packet(user.Client, eventName, message);
-        Core.WebSocket.WebSocket.Send(user.Client.SocketContext, packet);
+        if (user.Client != null)
+        {
+            var packet = new Packet(user.Client, eventName, message);
+            Core.WebSocket.WebSocket.Send(user.Client.SocketContext, packet);
+        }
     }
 
     public static void Send(WebSocketContextData client, string eventName, object message)
