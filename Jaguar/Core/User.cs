@@ -12,7 +12,7 @@ public abstract class User
     /// <summary>
     /// it return current room witch user joined.
     /// </summary>
-    internal WebSocketContextData? Client;
+    internal LiteNetLibContextData? Client;
 
 
     //public bool InRoom { get; internal set; }
@@ -66,7 +66,7 @@ public abstract class User
     /// there is two kind of constructor for user.
     /// this constructor is for real users, witch needs Sender variable as an argument
     /// </summary>
-    protected User(WebSocketContextData? client)
+    protected User(LiteNetLibContextData? client)
     {
         if (client == null)
             throw new NullReferenceException("Sender can not be null");
@@ -162,7 +162,7 @@ public abstract class User
     /// this is for real users, witch get Sender variable for update.
     /// </summary>
     /// <param name="client">Sender of user</param>
-    public void UpdateClient(WebSocketContextData? client)
+    public void UpdateClient(LiteNetLibContextData? client)
     {
         // Server.UpdateClient(this, client);
         Client = client;

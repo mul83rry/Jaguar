@@ -1,10 +1,11 @@
 ﻿using System.Net.WebSockets;
+using LiteNetLib;
 
 namespace Jaguar.Core.WebSocket;
 
-public class WebSocketContextData
+public class LiteNetLibContextData
 {
-    public WebSocketContext SocketContext { get; init; }
+    public NetPeer Peer { get; init; }
     public User? User { get; set; }
     public Dictionary<string, byte> SupportedListeners { get; internal set; }
 }

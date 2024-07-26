@@ -4,8 +4,8 @@ namespace Jaguar.Helpers;
 
 public static class StringExtensions
 {
-    public static byte[] ToBytes(this string value)
+    /*public static byte[] ToBytes(this string value)
     {
-        return Server.Encoding.GetBytes(value);
-    }
+        return LiteNetLibServer.Encoding.GetBytes(value);
+    }*/
 }

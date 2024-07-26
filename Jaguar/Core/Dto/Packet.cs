@@ -16,7 +16,7 @@ public record Packet
     public string? Message { get; }
     public BigInteger? Sender { get; init; }
 
-    public Packet(byte[] data)
+    /*public Packet(byte[] data)
     {
         Sender = new BigInteger(data.Take(7).ToArray());
 
@@ -39,7 +39,7 @@ public record Packet
         }
 
         Message = data.Any() ? Server.Encoding.GetString(data) : string.Empty;
-    }
+    }*/
 
     public Packet(byte eventId, object message)
     {
@@ -47,7 +47,7 @@ public record Packet
         Message = JsonConvert.SerializeObject(message);
     }
 
-    public Packet(WebSocketContextData client, string eventName, object message)
+    public Packet(LiteNetLibContextData client, string eventName, object message)
     {
         if (!client.SupportedListeners.TryGetValue(eventName, out var eventId)) return;
 

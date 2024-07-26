@@ -4,8 +4,10 @@ using System.Net.WebSockets;
 using System.Reflection;
 using System.Text;
 using Jaguar.Core.Dto;
+using Jaguar.Core.LiteNetLib;
 using Jaguar.Core.WebSocket;
 using Jaguar.Listeners;
+using LiteNetLib;
 using Microsoft.Extensions.Logging;
 
 namespace Jaguar.Core;
@@ -32,17 +34,15 @@ public class Server
 
     // public static Dictionary<BigInteger, ClientData?> GetClients() => new(Clients!);
 
-    internal WebSocket.WebSocket WebSocket;
+    // internal WebSocket.WebSocket WebSocket;
+    internal static LiteNetLibServer LiteNetLibServer;
 
-    public Server(string address, ILogger _logger)
+    public Server(int ip, ILogger _logger)
     {
-        if (string.IsNullOrEmpty(address) || string.IsNullOrWhiteSpace(address))
-            throw new ArgumentNullException(nameof(address));
-
         _logger = Logger;
 
-        var uri = address;
-        WebSocket = new WebSocket.WebSocket(address, MaxBufferSize);
+        // WebSocket = new WebSocket.WebSocket(address, MaxBufferSize);
+        LiteNetLibServer = new LiteNetLibServer(9050);
     }
 
     // 0: none,
@@ -62,11 +62,11 @@ public class Server
         #region UnRegistered user listener
 
         var unRegisteredUserListeners = from x in assembly.GetTypes()
-                                        let y = x.BaseType
-                                        where !x.IsAbstract && !x.IsInterface &&
-                                              y is { IsGenericType: true } &&
-                                              y.GetGenericTypeDefinition() == typeof(UnRegisteredUserListener<>)
-                                        select x;
+            let y = x.BaseType
+            where !x.IsAbstract && !x.IsInterface &&
+                  y is { IsGenericType: true } &&
+                  y.GetGenericTypeDefinition() == typeof(UnRegisteredUserListener<>)
+            select x;
 
         foreach (var listener in unRegisteredUserListeners)
         {
@@ -98,7 +98,7 @@ public class Server
                 Method = methodInfo,
                 @object = instance,
                 // ListenersManager = (ListenersManager) Activator.CreateInstance(listener)!,
-                SenderType = typeof(WebSocketContextData)
+                SenderType = typeof(LiteNetLibContextData)
             };
             AddListener(name, jaguarTask);
         }
@@ -108,14 +108,14 @@ public class Server
         #region Registered user listener
 
         var registeredUserListeners = from x in assembly.GetTypes()
-                                      let y = x.BaseType
-                                      where !x.IsAbstract && !x.IsInterface &&
-                                            y is { IsGenericType: true } &&
-                                            (
-                                                y.GetGenericTypeDefinition() == typeof(RegisteredUserListener<,>)
-                                                || y.GetGenericTypeDefinition() == typeof(RegisteredUserListener<,,>)
-                                            )
-                                      select x;
+            let y = x.BaseType
+            where !x.IsAbstract && !x.IsInterface &&
+                  y is { IsGenericType: true } &&
+                  (
+                      y.GetGenericTypeDefinition() == typeof(RegisteredUserListener<,>)
+                      || y.GetGenericTypeDefinition() == typeof(RegisteredUserListener<,,>)
+                  )
+            select x;
 
         foreach (var listener in registeredUserListeners)
         {
@@ -180,7 +180,8 @@ public class Server
     /// </summary>
     public void Start()
     {
-        WebSocket.Start();
+        LiteNetLibServer.Start();
+        // WebSocket.Start();
     }
 
     /// <summary>
@@ -207,14 +208,17 @@ public class Server
         if (user.Client != null)
         {
             var packet = new Packet(user.Client, eventName, message);
-            Core.WebSocket.WebSocket.Send(user.Client.SocketContext, packet);
+            // Core.WebSocket.WebSocket.Send(user.Client.SocketContext, packet);
         }
     }
 
-    public static void Send(WebSocketContextData client, string eventName, object message)
+    public static void Send(LiteNetLibContextData client, string eventName, object message,
+        DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
     {
         var packet = new Packet(client, eventName, message);
-        Core.WebSocket.WebSocket.Send(client.SocketContext, packet);
+
+        // Core.WebSocket.WebSocket.Send(client.SocketContext, packet);
+        LiteNetLibServer.SendMessage(client.Peer, packet, deliveryMethod);
     }
 
     // internal static void UpdateClient(User user, WebSocketContextData? sender)
