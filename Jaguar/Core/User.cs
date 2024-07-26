@@ -1,4 +1,6 @@
-﻿using Jaguar.Core.WebSocket;
+﻿using Jaguar.Core.LiteNetLib;
+using Jaguar.Core.WebSocket;
+using Jaguar.Manager;
 using LiteNetLib;
 
 namespace Jaguar.Core;
@@ -76,7 +78,8 @@ public abstract class User
 
         UniqueId = Server.GenerateUniqueUserId();
         UpdateClient(peer);
-        //peer.User = this;
+        var client = LiteNetLibServer.FindPeerById(peer.Id);
+        client.User = this;
     }
 
     #endregion constructor
