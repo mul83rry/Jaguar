@@ -1,57 +1,23 @@
 ﻿using System.Numerics;
 using Jaguar.Core.WebSocket;
+using LiteNetLib;
 using Newtonsoft.Json;
 
 namespace Jaguar.Core.Dto;
 
 public record Packet
 {
-    // 200: last byte index
-    internal const byte SignEof = 200;
-
-    // 0: none,
-    // 1: join,
-    // 2: already used
-    public byte EventId { get; set; }
+    public string EventName { get; set; }
     public string? Message { get; }
-    public BigInteger? Sender { get; init; }
 
-    /*public Packet(byte[] data)
+    public static Packet Create(string eventName, object message)
     {
-        Sender = new BigInteger(data.Take(7).ToArray());
-
-        data = data.Skip(7).ToArray();
-
-        EventId = data[0];
-
-        data = data.Skip(1).ToArray();
-
-        var index = Array.IndexOf(data, SignEof);
-
-        if (index == 0)
-        {
-            data = Array.Empty<byte>();
-        }
-        else
-        {
-            data = data.Take(index)
-                .ToArray();
-        }
-
-        Message = data.Any() ? Server.Encoding.GetString(data) : string.Empty;
-    }*/
-
-    public Packet(byte eventId, object message)
-    {
-        EventId = eventId;
-        Message = JsonConvert.SerializeObject(message);
+        return new Packet(eventName, JsonConvert.SerializeObject(message));
     }
 
-    public Packet(LiteNetLibContextData client, string eventName, object message)
+    public Packet(string eventName, string? message)
     {
-        if (!client.SupportedListeners.TryGetValue(eventName, out var eventId)) return;
-
-        EventId = eventId;
-        Message = JsonConvert.SerializeObject(message);
+        EventName = eventName;
+        Message = message;
     }
 }

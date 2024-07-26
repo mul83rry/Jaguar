@@ -37,12 +37,12 @@ public class Server
     // internal WebSocket.WebSocket WebSocket;
     internal static LiteNetLibServer LiteNetLibServer;
 
-    public Server(int ip, ILogger _logger)
+    public Server(int port)
     {
-        _logger = Logger;
+        //_logger = Logger;
 
         // WebSocket = new WebSocket.WebSocket(address, MaxBufferSize);
-        LiteNetLibServer = new LiteNetLibServer(9050);
+        LiteNetLibServer = new LiteNetLibServer(port);
     }
 
     // 0: none,
@@ -55,7 +55,6 @@ public class Server
         return Listeners.ToDictionary(i => i.Key,
             _ => (byte)sequenceNumber++);
     }
-
 
     public static void AddListeners(Assembly assembly)
     {
@@ -98,7 +97,7 @@ public class Server
                 Method = methodInfo,
                 @object = instance,
                 // ListenersManager = (ListenersManager) Activator.CreateInstance(listener)!,
-                SenderType = typeof(LiteNetLibContextData)
+                SenderType = typeof(NetPeer)
             };
             AddListener(name, jaguarTask);
         }
@@ -205,20 +204,20 @@ public class Server
         if (eventName == null) throw new ArgumentNullException(nameof(eventName));
         if (message == null) throw new ArgumentNullException(nameof(message));
 
-        if (user.Client != null)
+        if (user.Peer != null)
         {
-            var packet = new Packet(user.Client, eventName, message);
-            // Core.WebSocket.WebSocket.Send(user.Client.SocketContext, packet);
+            var packet = Packet.Create(eventName, message);
+            LiteNetLibServer.SendMessage(user.Peer, packet);
         }
     }
 
-    public static void Send(LiteNetLibContextData client, string eventName, object message,
+    public static void Send(NetPeer peer, string eventName, object message,
         DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
     {
-        var packet = new Packet(client, eventName, message);
+        var packet = Packet.Create(eventName, message);
 
         // Core.WebSocket.WebSocket.Send(client.SocketContext, packet);
-        LiteNetLibServer.SendMessage(client.Peer, packet, deliveryMethod);
+        LiteNetLibServer.SendMessage(peer, packet, deliveryMethod);
     }
 
     // internal static void UpdateClient(User user, WebSocketContextData? sender)

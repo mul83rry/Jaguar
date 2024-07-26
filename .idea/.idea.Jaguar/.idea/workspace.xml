@@ -5,18 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="13c434bd-b18c-4b5f-af84-ab2e7c9ba86e" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/Jaguar/Core/LiteNetLib/LiteNetLibServer.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Jaguar/ClientData.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Jaguar/ClientData.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Jaguar/Core/Dto/Packet.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Jaguar/Core/Dto/Packet.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Jaguar/Core/Server.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Jaguar/Core/Server.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Jaguar/Core/User.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Jaguar/Core/User.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Jaguar/Core/WebSocket/WebSocket.cs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Jaguar/Core/WebSocket/WebSocketContextData.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Jaguar/Core/LiteNetLib/LiteNetLibContextData.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Jaguar/Helpers/StringExtensions.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Jaguar/Helpers/StringExtensions.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Jaguar/Jaguar.csproj" beforeDir="false" afterPath="$PROJECT_DIR$/Jaguar/Jaguar.csproj" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Jaguar/Listeners/UnRegisteredUserListener.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Jaguar/Listeners/UnRegisteredUserListener.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Jaguar/Manager/RoomManager.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Jaguar/Manager/RoomManager.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Jaguar/Manager/UsersManager.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Jaguar/Manager/UsersManager.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.idea.Jaguar/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.Jaguar/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -41,7 +30,7 @@
   "keyToString": {
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "mater__MigrateToWebSocket",
+    "git-widget-placeholder": "master__MigrateToLiteNetLib",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -65,7 +54,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1721988383297</updated>
-      <workItem from="1721988385270" duration="2005000" />
+      <workItem from="1721988385270" duration="3439000" />
     </task>
     <servers />
   </component>

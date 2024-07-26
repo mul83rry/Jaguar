@@ -1,4 +1,5 @@
 ﻿using Jaguar.Core.WebSocket;
+using LiteNetLib;
 
 namespace Jaguar.Core;
 
@@ -12,7 +13,7 @@ public abstract class User
     /// <summary>
     /// it return current room witch user joined.
     /// </summary>
-    internal LiteNetLibContextData? Client;
+    internal NetPeer? Peer;
 
 
     //public bool InRoom { get; internal set; }
@@ -66,16 +67,16 @@ public abstract class User
     /// there is two kind of constructor for user.
     /// this constructor is for real users, witch needs Sender variable as an argument
     /// </summary>
-    protected User(LiteNetLibContextData? client)
+    protected User(NetPeer? peer)
     {
-        if (client == null)
+        if (peer == null)
             throw new NullReferenceException("Sender can not be null");
 
         // Server.UpdateClient(this, client);
 
         UniqueId = Server.GenerateUniqueUserId();
-        UpdateClient(client);
-        client.User = this;
+        UpdateClient(peer);
+        //peer.User = this;
     }
 
     #endregion constructor
@@ -161,11 +162,11 @@ public abstract class User
     /// <summary>
     /// this is for real users, witch get Sender variable for update.
     /// </summary>
-    /// <param name="client">Sender of user</param>
-    public void UpdateClient(LiteNetLibContextData? client)
+    /// <param name="peer">Sender of user</param>
+    public void UpdateClient(NetPeer? peer)
     {
         // Server.UpdateClient(this, client);
-        Client = client;
+        Peer = peer;
     }
 
     internal User ShallowCopy() => (User) MemberwiseClone();

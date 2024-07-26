@@ -7,7 +7,7 @@ namespace Jaguar;
 public class ClientData : IDisposable
 {
     // public readonly WebSocketContext Client;
-    public readonly NetPeer Client;
+    public readonly NetPeer Peer;
     public User? User;
     public DateTime LastActivateTime { get; set; }
 
@@ -15,7 +15,7 @@ public class ClientData : IDisposable
     internal ClientData(User? user, NetPeer client)
     {
         User = user;
-        Client = client;
+        Peer = client;
         LastActivateTime = DateTime.UtcNow;
     }
 

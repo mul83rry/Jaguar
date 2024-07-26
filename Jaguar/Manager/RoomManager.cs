@@ -2,6 +2,7 @@
 using Jaguar.Core;
 using Jaguar.Core.WebSocket;
 using Jaguar.Enums;
+using LiteNetLib;
 
 namespace Jaguar.Manager;
 
@@ -109,7 +110,7 @@ public static class RoomManager
         return false;
     }
 
-    public static bool ReJoin(long uniqueId, LiteNetLibContextData client, out User? user)
+    public static bool ReJoin(long uniqueId, NetPeer client, out User? user)
     {
         var room = GetRooms<Room>().LastOrDefault(r => r.Users.Any(u => u != null && u.UniqueId == uniqueId));
         if (room == null)
