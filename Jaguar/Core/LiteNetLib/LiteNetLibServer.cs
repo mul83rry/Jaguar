@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Text.Json;
 using Jaguar.Core.Dto;
 using LiteNetLib;
 using LiteNetLib.Utils;
@@ -21,12 +22,12 @@ internal class LiteNetLibServer : INetEventListener
             AutoRecycle = true
         };
         _port = port;
-        
+
         _peersById = new Dictionary<int, ClientData>();
     }
 
     internal void Start()
-    {        
+    {
         Server.OnServerStarted?.Invoke();
 
         Console.WriteLine("Server started.");
@@ -47,7 +48,7 @@ internal class LiteNetLibServer : INetEventListener
         }
         return null;
     }
-    
+
     public void OnPeerConnected(NetPeer peer)
     {
         _peersById.TryAdd(peer.Id, new ClientData(null, peer));
@@ -93,7 +94,10 @@ internal class LiteNetLibServer : INetEventListener
         }
 
         _writer.Reset();
-        _writer.Put(System.Text.Json.JsonSerializer.Serialize(packet));
+        string serializedPacket = JsonSerializer.Serialize<object>(packet);
+        Console.WriteLine($"SerializedPacket: {serializedPacket}");
+        _writer.Put(serializedPacket);
+        //_writer.Put(Newtonsoft.Json.JsonConvert.SerializeObject(packet));
         peer.Send(_writer, deliveryMethod);
     }
 
@@ -106,7 +110,7 @@ internal class LiteNetLibServer : INetEventListener
 
         ClientData clientData = FindPeerById(peer.Id);
 
-        Packet packet = System.Text.Json.JsonSerializer.Deserialize<Packet>(message);
+        Packet packet = JsonSerializer.Deserialize<Packet>(message);
 
         _ = CheckListeners(packet, peer);
         //SendMessage(peer, new Packet("Event2", "Welcome to the server!"));
@@ -138,7 +142,13 @@ internal class LiteNetLibServer : INetEventListener
                 return;
             }
 
-            var data = System.Text.Json.JsonSerializer.Deserialize(packet.Message, normalTask.RequestType);
+            /*if (packet.Message is not JsonElement messageElement)
+                return;*/
+
+            var data = JsonSerializer.Deserialize(packet.Message.ToString(), normalTask.RequestType);
+            //var data = Convert.ChangeType(packet.Message, normalTask.RequestType);
+            //var data = packet.Message;
+
 
             object? convertedSender = peer;
             if (normalTask.SenderType != typeof(NetPeer))
