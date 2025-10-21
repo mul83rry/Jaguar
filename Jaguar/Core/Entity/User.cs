@@ -172,5 +172,10 @@ public abstract class User
 
     internal User ShallowCopy() => (User) MemberwiseClone();
 
+    public void Send(string eventName, object data)
+    {
+        Jaguar.Core.Server.Send(this, eventName, data);
+    }
+
     public abstract void Dispose();
 }
