@@ -1,4 +1,6 @@
-﻿namespace Jaguar.Core;
+﻿using Jaguar.Core.Entity;
+
+namespace Jaguar.Core;
 
 [Serializable]
 public sealed class Round

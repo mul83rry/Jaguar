@@ -1,145 +1,61 @@
-﻿using System.Net;
-using System.Text;
-using System.Text.Json.Serialization;
+﻿using System.Numerics;
+using Jaguar.Core.WebSocket;
+using Jaguar.Helpers;
 
 namespace Jaguar.Core.Dto;
 
-public struct Packet
+public record Packet
 {
-    public Packet(uint index, string eventName, string? message, bool reliable, byte signIndex) : this()
-    {
-        Index = index;
-        EventName = eventName;
-        Message = message;
-        Reliable = reliable;
+    // 200: last byte index
+    internal const byte SignEof = 200;
 
-        SignIndex = signIndex;
-
-        BigData = StarterPack = false;
-        Length = 0;
-    }
-
-    public Packet(uint index, string eventName, string? message, bool reliable, bool bigData, bool starterPack, uint length, byte signIndex) : this(index, eventName, message, reliable, signIndex)
-    {
-        BigData = bigData;
-        StarterPack = starterPack;
-        Length = length;
-    }
+    // 0: none,
+    // 1: join,
+    // 2: already used
+    public byte EventId { get; set; }
+    public string? Message { get; }
+    public BigInteger? Sender { get; init; }
 
     public Packet(byte[] data)
     {
-        OnPacketArrived = null;
-        Reliable = data[0] >= 1;
-        if (Reliable)
+        Sender = new BigInteger(data.Take(7).ToArray());
+
+        data = data.Skip(7).ToArray();
+
+        EventId = data[0];
+
+        data = data.Skip(1).ToArray();
+
+        var index = Array.IndexOf(data, SignEof);
+
+        if (index == 0)
         {
-            var index = 6;
-            SignIndex = (byte)(data[0] - 1);
-            var eventNameLength = data[1];
-            BigData = data[2] == 1;
-            StarterPack = data[3] == 1;
-            var indexLength = data[4];
-            Length = data[5];
-
-            var indexAsByteArray = new byte[indexLength];
-            Array.Copy(data, index, indexAsByteArray, 0, indexLength);
-            Index = uint.Parse(Server.Encoding.GetString(indexAsByteArray));
-            index += indexLength;
-
-
-            var eventNameAsByteArray = new byte[eventNameLength];
-            Array.Copy(data, index, eventNameAsByteArray, 0, eventNameLength);
-            EventName = Server.Encoding.GetString(eventNameAsByteArray);
-            index += eventNameLength;
-
-
-            var messageAsByteArray = new byte[data.Length - index];
-            Array.Copy(data, index, messageAsByteArray, 0, data.Length - index);
-            Message = Server.Encoding.GetString(messageAsByteArray);
+            data = Array.Empty<byte>();
         }
         else
         {
-            var index = 2;
-
-            Index = 0;
-            SignIndex = 0;
-            var eventNameLength = data[1];
-            var eventNameAsByteArray = new byte[eventNameLength];
-            Array.Copy(data, index, eventNameAsByteArray, 0, eventNameLength);
-            EventName = Server.Encoding.GetString(eventNameAsByteArray);
-            index += eventNameLength;
-
-
-            var messageAsByteArray = new byte[data.Length - index];
-            Array.Copy(data, index, messageAsByteArray, 0, data.Length - index);
-            Message = Server.Encoding.GetString(messageAsByteArray);
-
-            BigData = false;
-            StarterPack = false;
-            Length = 0;
+            data = data.Take(index)
+                .ToArray();
         }
 
-        Sender = null;
+        Message = data.Any() ? Server.Encoding.GetString(data) : string.Empty;
     }
 
-
-    [JsonPropertyName("I")] public uint Index { get; set; }
-    [JsonPropertyName("E")] public string EventName { get; set; }
-    [JsonPropertyName("M")] public string? Message { get; set; }
-    [JsonPropertyName("R")] public bool Reliable { get; set; }
-    [JsonPropertyName("SI")] public byte SignIndex { get; set; } // Start from '1'
-    [JsonPropertyName("B")] public bool BigData { get; set; }
-    [JsonPropertyName("S")] public bool StarterPack { get; set; }
-    [JsonPropertyName("L")] public uint Length { get; set; }
-
-    [JsonIgnore] public IPEndPoint? Sender { get; set; }
-    [JsonIgnore] public Action<uint>? OnPacketArrived { get; set; }
-
-    public byte[] ToByte()
+    public Packet(byte eventId, object message)
     {
-        if (Message == null) throw new NullReferenceException("Message property is empty");
+        EventId = eventId;
+        Message = message.ToJson();// JsonConvert.SerializeObject(message);
+    }
 
-        else
+    public Packet(WebSocketContextData client, string eventName, object message)
+    {
+        if (!client.SupportedListeners.TryGetValue(eventName, out var eventId))
         {
-            var messageAsByteArray = Encoding.UTF8.GetBytes(Message);
-            var eventNameAsByteArray = Encoding.UTF8.GetBytes(EventName);
-
-            byte[] data;
-            if (Reliable)
-            {
-                var packetHeaderSize = 6;
-                var indexAsByteArray = Encoding.UTF8.GetBytes(Index.ToString());
-
-                data = new byte[messageAsByteArray.Length + packetHeaderSize + eventNameAsByteArray.Length +
-                                indexAsByteArray.Length];
-
-                data[0] = (byte)(Reliable ? (1 + SignIndex) : 0);
-                data[1] = (byte)EventName.Length;
-                data[2] = (byte)(BigData ? 1 : 0);
-                data[3] = (byte)(StarterPack ? 1 : 0);
-                data[4] = (byte)indexAsByteArray.Length;
-                data[5] = (byte)Length;
-
-
-                Array.Copy(indexAsByteArray, 0, data, packetHeaderSize, indexAsByteArray.Length);
-                packetHeaderSize += indexAsByteArray.Length;
-                Array.Copy(eventNameAsByteArray, 0, data, packetHeaderSize, eventNameAsByteArray.Length);
-                Array.Copy(messageAsByteArray, 0, data, packetHeaderSize + eventNameAsByteArray.Length,
-                    messageAsByteArray.Length);
-            }
-            else
-            {
-                const int packetHeaderSize = 2;
-                data = new byte[messageAsByteArray.Length + packetHeaderSize + eventNameAsByteArray.Length];
-
-                data[0] = (byte)(Reliable ? 1 : 0);
-                data[1] = (byte)EventName.Length;
-
-                Array.Copy(eventNameAsByteArray, 0, data, packetHeaderSize, eventNameAsByteArray.Length);
-                Array.Copy(messageAsByteArray, 0, data, packetHeaderSize + eventNameAsByteArray.Length,
-                    messageAsByteArray.Length);
-            }
-
-            return data;
+            Server.OnError?.Invoke($"Jaguar: Client doesn't have any listener for the send event! {eventName}");
+            return;
         }
+
+        EventId = eventId;
+        Message = message.ToJson();// JsonConvert.SerializeObject(message);
     }
 }

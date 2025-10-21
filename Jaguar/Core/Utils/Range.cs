@@ -1,4 +1,4 @@
-﻿namespace Jaguar.Core;
+﻿namespace Jaguar.Core.Utils;
 
 [Serializable]
 public struct Range

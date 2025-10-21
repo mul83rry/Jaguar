@@ -1,7 +1,6 @@
-﻿using System.Net;
-using Jaguar.Extensions;
+﻿using Jaguar.Core.WebSocket;
 
-namespace Jaguar.Core;
+namespace Jaguar.Core.Entity;
 
 [Serializable]
 public abstract class User
@@ -13,13 +12,14 @@ public abstract class User
     /// <summary>
     /// it return current room witch user joined.
     /// </summary>
-    [NonSerialized] internal IPEndPoint? Client;
+    internal WebSocketContextData? Client;
+
 
     //public bool InRoom { get; internal set; }
 
-    public bool IsOnline { get; internal set; }
+    // public WebSocketContext SocketContext { get; set; }
 
-    public DateTime LastActivateTime => Server.GetClients()[Client.ConvertToKey()]!.LastActivateTime;
+    // public DateTime LastActivateTime => Server.GetClients()[Client.ConvertToKey()]!.LastActivateTime;
 
     /// <summary>
     /// user rooms
@@ -50,6 +50,9 @@ public abstract class User
     /// </summary>
     public long UniqueId { get; }
 
+    public bool IsOnline { get; internal set; } = true;
+
+
     #region constructor
 
     /// <summary>
@@ -65,16 +68,16 @@ public abstract class User
     /// there is two kind of constructor for user.
     /// this constructor is for real users, witch needs Sender variable as an argument
     /// </summary>
-    protected User(IPEndPoint? ipEndPoint)
+    protected User(WebSocketContextData? client)
     {
-        if (ipEndPoint == null)
+        if (client == null)
             throw new NullReferenceException("Sender can not be null");
 
-        Server.UpdateClient(this, ipEndPoint);
+        // Server.UpdateClient(this, client);
 
         UniqueId = Server.GenerateUniqueUserId();
-        IsOnline = true;
-        Client = ipEndPoint;
+        UpdateClient(client);
+        client.User = this;
     }
 
     #endregion constructor
@@ -161,9 +164,9 @@ public abstract class User
     /// this is for real users, witch get Sender variable for update.
     /// </summary>
     /// <param name="client">Sender of user</param>
-    public void UpdateClient(IPEndPoint? client)
+    public void UpdateClient(WebSocketContextData? client)
     {
-        Server.UpdateClient(this, client);
+        // Server.UpdateClient(this, client);
         Client = client;
     }
 

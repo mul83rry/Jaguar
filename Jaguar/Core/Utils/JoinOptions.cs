@@ -1,6 +1,6 @@
-﻿namespace Jaguar.Core;
+﻿namespace Jaguar.Core.Utils;
 
-public record JoinOptions
+public sealed record JoinOptions
 {
     internal uint? Level { get; private init; }
     internal long? RoomId { get; private init; }

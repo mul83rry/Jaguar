@@ -1,6 +1,8 @@
-﻿using System.Collections.Immutable;
-using System.Net;
+using System.Collections.Immutable;
 using Jaguar.Core;
+using Jaguar.Core.Entity;
+using Jaguar.Core.Utils;
+using Jaguar.Core.WebSocket;
 using Jaguar.Enums;
 
 namespace Jaguar.Manager;
@@ -12,6 +14,19 @@ public static class RoomManager
     /// </summary>
     private static ImmutableList<Room> Rooms { get; set; } = ImmutableList<Room>.Empty;
 
+    /// <summary>
+    /// بررسی می‌کند که آیا کاربر در بازی فعال است یا خیر
+    /// </summary>
+    /// <param name="userId">شناسه کاربر</param>
+    /// <returns>true اگر کاربر در بازی فعال باشد</returns>
+    public static bool IsUserInActiveGame(long userId)
+    {
+        var rooms = GetRooms<Room>();
+        return rooms.Any(r => 
+            r.Users.Any(u => u?.UniqueId == userId) && 
+            r.GameStarted && 
+            !r.GameComplete);
+    }
 
     public static T[] GetRooms<T>() where T : Room
     {
@@ -109,7 +124,7 @@ public static class RoomManager
         return false;
     }
 
-    public static bool ReJoin(long uniqueId, IPEndPoint client, out User? user)
+    public static bool ReJoin(long uniqueId, WebSocketContextData client, out User? user)
     {
         var room = GetRooms<Room>().LastOrDefault(r => r.Users.Any(u => u != null && u.UniqueId == uniqueId));
         if (room == null)

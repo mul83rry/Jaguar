@@ -1,8 +1,9 @@
 ﻿using System.Collections.Immutable;
 using Jaguar.Enums;
 using Jaguar.Manager;
+using Range = Jaguar.Core.Utils.Range;
 
-namespace Jaguar.Core;
+namespace Jaguar.Core.Entity;
 
 [Serializable]
 public abstract class Room
@@ -31,12 +32,12 @@ public abstract class Room
     /// check if game completed.
     /// </summary>
     // check for all round complete?
-    public bool GameComplete => GameStarted && Rounds.All(r => r.Completed);
+    public bool GameComplete => GameStarted && Rounds.All(r => r?.Completed ?? true);
 
     /// <summary>
     /// this value specify`s that if the game started .
     /// </summary>
-    public bool GameStarted { get; private set; }
+    public bool GameStarted { get; set; }
 
     /// <summary>
     /// return true if a round is playing.
@@ -70,7 +71,7 @@ public abstract class Room
     /// <summary>
     /// it show`s list of users in the room.
     /// </summary>
-    public ImmutableList<User?> Users { get; private set; }
+    public ImmutableList<User?> Users { get; protected set; }
 
     /// <summary>
     /// range of users count.
@@ -171,15 +172,16 @@ public abstract class Room
     /// default value of 'Access' is 'Access.public'.
     /// </summary>
     /// <param name="roundCount">rounds count</param>
-    protected Room(int roundCount)
+    /// <param name="access">Access type (Public or Private)</param>
+    protected Room(int roundCount, Access access)
     {
         Users = ImmutableList<User?>.Empty;
         CreationTime = DateTime.UtcNow;
-        Rounds = new Round[roundCount]; // Todo: test
+        Rounds = new Round[10]; // Todo: test
         Password = string.Empty;
         UsersCount = new Range(2);
         _maxUser = UsersCount.End;
-        Access = Access.Public;
+        Access = access;
 
         RoomManager.AddRoom(this);
     }
@@ -187,22 +189,19 @@ public abstract class Room
     #endregion contructors
 
     /// <summary>
-    /// return true if all users defined in 'range' variable joined the room.
-    /// </summary>
-    /// <summary>
     /// add new user to room.
     /// </summary>
     /// <param name="user">user want join the room</param>
     /// <param name="pwd"></param>
     /// <exception cref="Exception">'GameStarted' and 'AllUsersJoined' must be 'false'.</exception>        
-    public async Task<bool> AddUserAsync(User user, string pwd = "") // todo: check this
+    public virtual async Task<bool> AddUserAsync(User user, string pwd = "") // todo: check this
     {
         if (GameStarted && !EnableJoinAfterGameStarted) return false;
         if (Users.Count == _maxUser) return false;
         if (!string.IsNullOrEmpty(pwd) && string.IsNullOrEmpty(Password)) return false;
         if (!string.IsNullOrEmpty(Password) && Password != pwd) return false;
 
-        if (Users.Any(u => u.UniqueId == user.UniqueId))
+        if (Users.Any(u => u?.UniqueId == user.UniqueId))
         {
             return false;
         }
@@ -219,10 +218,30 @@ public abstract class Room
         if (!UsersCount.InRange((uint) Users.Count)) return true;
         if (_roomReadyInvoked) return true;
         _roomReadyInvoked = true;
+        
+        
+        
         // call room ready event
         await RoomReadyForStartAsync(Users.ToArray());
 
         return true;
+    }
+
+    public void ReplaceUser(User oldUser, User newUser)
+    {
+        Users = Users.Replace(oldUser, newUser);
+    }
+    
+    public void RemoveUser(User user)
+    {
+        Users = Users.Remove(user);
+        user.SetCurrentRoomToNull();
+        user.Rooms.Remove(this);
+    }
+
+    public void ShuffleUsers()
+    {
+        Users = Users.OrderBy(_ => Guid.NewGuid()).ToImmutableList();
     }
 
     //public void CleanUsers()

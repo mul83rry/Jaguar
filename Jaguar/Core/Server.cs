@@ -1,114 +1,62 @@
 ﻿using System.Collections.Concurrent;
 using System.Collections.Immutable;
-using System.Net;
+using System.Diagnostics;
+using System.Net.WebSockets;
 using System.Reflection;
 using System.Text;
-using Jaguar.Core.Socket;
-using Jaguar.Extensions;
+using Jaguar.Core.Dto;
+using Jaguar.Core.Entity;
+using Jaguar.Core.Utils;
+using Jaguar.Core.WebSocket;
 using Jaguar.Listeners;
-using Jaguar.Manager;
-using Microsoft.Extensions.Logging;
 
 namespace Jaguar.Core;
 
-public class JaguarTask
-{
-    public Type? RequestType { get; init; }
-    public Type? ResponseType { get; init; }
-    public MethodInfo? Method;
-    public Object? @object;
-    public Type? SenderType;
-}
-
 public class Server
 {
-    public static Action<IPEndPoint>? OnNewClientJoined;
-    public static Action<IPEndPoint>? OnClientExited;
-    public static Action<string, int>? OnServerStarted;
+    public static Action<WebSocketContext>? OnNewClientJoined;
+    public static Action<WebSocketContext>? OnClientExited;
+    public static Action<string>? OnError { get; set; }
+    public static Action<string>? OnWarn { get; set; }
+    public static Action? OnServerStarted;
 
-    internal static readonly ConcurrentDictionary<string, JaguarTask> ListenersDic = new();
-    internal static readonly ConcurrentDictionary<string, JaguarTask> CallBackListenersDic = new();
+    public static int MaxBufferSize => 8000;
+
+    internal static readonly ConcurrentDictionary<string, JaguarTask> Listeners = new();
 
     private static ImmutableList<long> _usersUniqueId = ImmutableList<long>.Empty;
 
+    private readonly WebSocket.WebSocket webSocket;
 
-    private static readonly ConcurrentDictionary<string, ClientData> Clients = new();
-
-    internal static ILogger? Logger;
-
-
-    public static Dictionary<string, ClientData?> GetClients() => new(Clients!);
-
-    public static int ClientsCount => GetClients().Count;
-
-    public static int GetActiveClientsCount(TimeSpan time)
+    protected Server(string address)
     {
-        var dateTime = DateTime.UtcNow.Add(-time);
-        return Clients.Count(c => c.Value.LastActivateTime >= dateTime);
+        if (string.IsNullOrEmpty(address) || string.IsNullOrWhiteSpace(address))
+            throw new ArgumentNullException(nameof(address));
+
+        var uri = address;
+        webSocket = new WebSocket.WebSocket(address, MaxBufferSize);
     }
 
-    internal static string Ip = null!;
-    internal static int Port;
-
-    public Server(string ip, int port)
+    // 0: none,
+    // 1: join,
+    // 2: already used,
+    // 3: listenersSetting
+    public static Dictionary<string, byte> GetListenerNameMap()
     {
-        if (string.IsNullOrEmpty(ip) || string.IsNullOrWhiteSpace(ip))
-            throw new ArgumentNullException(nameof(ip));
-
-        Ip = ip;
-        Port = port;
-        UdpSocket.Server = this;
+        var sequenceNumber = 4;
+        return Listeners.ToDictionary(i => i.Key,
+            _ => (byte)sequenceNumber++);
     }
 
-    protected Server(string ip, int port, ILogger logger)
-    {
-        if (string.IsNullOrEmpty(ip) || string.IsNullOrWhiteSpace(ip))
-            throw new ArgumentNullException(nameof(ip));
-
-        Ip = ip;
-        Port = port;
-        UdpSocket.Server = this;
-        Logger = logger;
-    }
 
     public static void AddListeners(Assembly assembly)
     {
-        #region Byte listener
-
-        // Get all types in the assembly
-        var types = assembly.GetTypes();
-
-        // Filter the types to only include those that implement IByteListener
-        var byteListeners = types.Where(t => t.GetInterfaces().Contains(typeof(IByteListener)));
-
-        // var byteListeners = from x in assembly.GetTypes()
-        //     let y = x.BaseType
-        //     where y == typeof(IByteListener)
-        //     select x;
-
-        foreach (var listener in byteListeners)
-        {
-            var methodInfo = listener.GetMethod("OnMessageReceived");
-            if (methodInfo == null) continue;
-
-            var instance = Activator.CreateInstance(listener);
-            listener.GetMethod("Config")?.Invoke(instance, Array.Empty<object>());
-
-            // Check listener Instance
-            if (IByteListener.Instance is null)
-            {
-                throw new InvalidDataException($"IByteListener.Instance is null");
-            }
-        }
-
-        #endregion
-
         #region UnRegistered user listener
 
         var unRegisteredUserListeners = from x in assembly.GetTypes()
             let y = x.BaseType
             where !x.IsAbstract && !x.IsInterface &&
-                  y is {IsGenericType: true} &&
+                  y is { IsGenericType: true } &&
                   y.GetGenericTypeDefinition() == typeof(UnRegisteredUserListener<>)
             select x;
 
@@ -125,10 +73,12 @@ public class Server
 
 
             // Get the property info
+            Debug.Assert(instance != null, nameof(instance) + " != null");
             var propertyInfo = instance.GetType().GetProperty("Name");
 
             // Get the value of the property from the instance
-            var name = (string) propertyInfo.GetValue(instance);
+            Debug.Assert(propertyInfo != null, nameof(propertyInfo) + " != null");
+            var name = (string)propertyInfo.GetValue(instance)!;
 
             // Check listener name
             if (string.IsNullOrEmpty(name))
@@ -140,11 +90,15 @@ public class Server
             {
                 RequestType = genericArgument,
                 Method = methodInfo,
-                @object = instance,
+                Object = instance,
                 // ListenersManager = (ListenersManager) Activator.CreateInstance(listener)!,
-                SenderType = typeof(IPEndPoint)
+                SenderType = typeof(WebSocketContextData)
             };
-            AddListener(name, jaguarTask);
+
+            if (!AddListener(name, jaguarTask))
+            {
+                throw new InvalidDataException($"Can't add new listener{name}");
+            }
         }
 
         #endregion
@@ -154,7 +108,7 @@ public class Server
         var registeredUserListeners = from x in assembly.GetTypes()
             let y = x.BaseType
             where !x.IsAbstract && !x.IsInterface &&
-                  y is {IsGenericType: true} &&
+                  y is { IsGenericType: true } &&
                   (
                       y.GetGenericTypeDefinition() == typeof(RegisteredUserListener<,>)
                       || y.GetGenericTypeDefinition() == typeof(RegisteredUserListener<,,>)
@@ -177,10 +131,12 @@ public class Server
             listener.GetMethod("Config")?.Invoke(instance, Array.Empty<object>());
 
             // Get the property info
+            Debug.Assert(instance != null, nameof(instance) + " != null");
             var propertyInfo = instance.GetType().GetProperty("Name");
 
             // Get the value of the property from the instance
-            var name = (string) propertyInfo.GetValue(instance);
+            Debug.Assert(propertyInfo != null, nameof(propertyInfo) + " != null");
+            var name = (string)propertyInfo.GetValue(instance)!;
 
             // Check listener name
             if (string.IsNullOrEmpty(name))
@@ -199,11 +155,13 @@ public class Server
                     RequestType = genericArgument1,
                     ResponseType = genericArgument2,
                     Method = methodInfo,
-                    @object = instance,
+                    Object = instance,
                     SenderType = genericArgument0
                 };
-
-                AddAsyncListener(name, jaguarTask);
+                if (!AddListener(name, jaguarTask))
+                {
+                    throw new InvalidDataException($"Can't add new listener{name}");
+                }
             }
             else
             {
@@ -211,10 +169,13 @@ public class Server
                 {
                     RequestType = genericArgument1,
                     Method = methodInfo,
-                    @object = instance,
+                    Object = instance,
                     SenderType = genericArgument0
                 };
-                AddListener(name, jaguarTask);
+                if (!AddListener(name, jaguarTask))
+                {
+                    throw new InvalidDataException($"Can't add new listener{name}");
+                }
             }
         }
 
@@ -224,9 +185,9 @@ public class Server
     /// <summary>
     /// Start the server
     /// </summary>
-    public void Start()
+    public async void Start()
     {
-        UdpSocket.Start();
+        webSocket.Start();
     }
 
     /// <summary>
@@ -239,19 +200,9 @@ public class Server
     /// </summary>
     /// <param name="eventName">server listen to this eventName.</param>
     /// <param name="jaguarTask">server invoke this event after eventName called.</param>
-    internal static bool AddListener(string eventName, JaguarTask jaguarTask)
+    private static bool AddListener(string eventName, JaguarTask jaguarTask)
     {
-        return ListenersDic.TryAdd(eventName, jaguarTask);
-    }
-
-    /// <summary>
-    /// add an listener for a new 'eventName'.
-    /// </summary>
-    /// <param name="eventName">server listen to this eventName.</param>
-    /// <param name="jaguarTask">server invoke this event after eventName called.</param>
-    internal static bool AddAsyncListener(string eventName, JaguarTask jaguarTask)
-    {
-        return CallBackListenersDic.TryAdd(eventName, jaguarTask);
+        return Listeners.TryAdd(eventName, jaguarTask);
     }
 
     public static void Send(User user, string eventName, object message)
@@ -260,54 +211,17 @@ public class Server
         if (eventName == null) throw new ArgumentNullException(nameof(eventName));
         if (message == null) throw new ArgumentNullException(nameof(message));
 
-        //if (Clients.ContainsKey(user.Client.ConvertToKey()))
-        if (Clients.TryGetValue(user.Client.ConvertToKey(), out var usr))
-            usr.PacketSender.SendPacket(eventName, message);
-    }
-
-    public static void SendBytes(User? user, byte[] bytes)
-    {
-        if (user?.Client == null) return;
-        //if (Clients.ContainsKey(user.Client.ConvertToKey()))
-        if (Clients.TryGetValue(user.Client.ConvertToKey(), out var usr))
-            UdpSocket.SendBytes(usr.Client, bytes);
-    }
-
-    public static void SendBytes(IPEndPoint? client, byte[] bytes)
-    {
-        if (Clients.ContainsKey(client.ConvertToKey())) // Todo: need?
-            UdpSocket.SendBytes(client, bytes);
-    }
-
-    public static void SendReliable(User? user, string eventName, object message, Action<uint>? onPacketsArrived = null)
-    {
-        if (user == null) return;
-        //if (Clients.ContainsKey(user.Client.ConvertToKey()))
-        if (Clients.TryGetValue(user.Client.ConvertToKey(), out var usr))
-            usr.PacketSender.SendReliablePacket(eventName, message, onPacketsArrived);
-    }
-
-    public static void Send(IPEndPoint client, string eventName, object message)
-    {
-        //if (Clients.ContainsKey(client.ConvertToKey()))
-        if (Clients.TryGetValue(client.ConvertToKey(), out var usr))
-            usr.PacketSender.SendPacket(eventName, message);
-    }
-
-    public static void SendReliable(IPEndPoint client, string eventName, object message,
-        Action<uint>? onPacketsArrived = null)
-    {
-        //if (Clients.ContainsKey(client.ConvertToKey()))
-        if (Clients.TryGetValue(client.ConvertToKey(), out var usr))
-            usr.PacketSender.SendReliablePacket(eventName, message, onPacketsArrived);
-    }
-
-    internal static void UpdateClient(User? user, IPEndPoint? sender)
-    {
-        if (Clients.ContainsKey(sender.ConvertToKey()))
+        if (user.Client != null)
         {
-            Clients[sender.ConvertToKey()].User = user ?? throw new NullReferenceException("User not found");
+            var packet = new Packet(user.Client, eventName, message);
+            Core.WebSocket.WebSocket.Send(user.Client.SocketContext, packet);
         }
+    }
+
+    public static void Send(WebSocketContextData client, string eventName, object message)
+    {
+        var packet = new Packet(client, eventName, message);
+        Core.WebSocket.WebSocket.Send(client.SocketContext, packet);
     }
 
     internal static long GenerateUniqueUserId()
@@ -325,20 +239,5 @@ public class Server
         _usersUniqueId = _usersUniqueId.Add(id);
 
         return id;
-    }
-
-    public static void RemoveClient(string clientKey)
-    {
-        Clients.TryRemove(clientKey, out _);
-    }
-
-    public static void AddClient(string senderKey, ClientData clientData)
-    {
-        Clients.TryAdd(senderKey, clientData);
-    }
-
-    public static void RemoveUsersUniqueId(long userUniqueId)
-    {
-        _usersUniqueId = _usersUniqueId.Remove(userUniqueId);
     }
 }

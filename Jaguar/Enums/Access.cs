@@ -4,6 +4,6 @@
 public enum Access
 {
     None = 0,
-    Private = 1 << 1,
-    Public = 1 << 2
+    Private = 1,
+    Public = 1
 }
