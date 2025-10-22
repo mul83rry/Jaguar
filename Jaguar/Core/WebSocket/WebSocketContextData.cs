@@ -8,4 +8,9 @@ public class WebSocketContextData
     public WebSocketContext SocketContext { get; init; }
     public User? User { get; set; }
     public Dictionary<string, byte> SupportedListeners { get; internal set; }
+    
+    public async Task Send(string eventName, object request)
+    {
+        Jaguar.Core.Server.Send(this, eventName, request);
+    }
 }
